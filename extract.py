@@ -37,6 +37,8 @@ class Extractor:
     def get_replace_tuple(self):
         if self.type_extractor == 'likes':
             return 'Like Goal - ', ' Likes'
+        if self.type_extractor == 'shares':
+            return 'Share Goal - ', ' Shares'
         if self.type_extractor == 'coins':
             return 'Earned Coins - ', ' Coins'
         if self.type_extractor == 'subs':
@@ -119,6 +121,37 @@ class Ranking:
             self.next_extract += timedelta(seconds=10)
 
 
+class ChampionshipExtractor:
+
+    def __init__(self):
+        options = Options()
+        options.page_load_strategy = 'eager'
+        options.add_argument("--headless=new")
+        self.driver = webdriver.Chrome(options=options)
+        self.driver.get(f'https://www.terra.com.br/esportes/futebol/brasileiro-serie-a/tabela/#google_vignette')
+        time.sleep(5)
+
+    def get_value(self):
+        try:
+            club_list_names = []
+            for club_element in self.driver.find_elements(By.XPATH, '//*[@id="mod-603-standings-round-robin"]/div[1]/div[1]/table/tbody/tr/td[3]/a'):
+                if len(club_list_names) < 16:
+                    club_list_names.append(club_element.text)
+            return club_list_names
+        except Exception as e:
+            return 0
+
+
 if __name__ == "__main__":
-    new_rank = Ranking('gifter')
-    new_rank.get_rank_list()
+    import pygame
+    pygame.init()
+    screen = pygame.display.set_mode((1980, 1024))
+    pygame.display.set_caption("Roleta")
+
+    from load_files import *
+    championship = ChampionshipExtractor()
+    club_list = championship.get_value()
+    if club_list:
+        load_files = LoadFiles(club_list)
+    print('ok')
+

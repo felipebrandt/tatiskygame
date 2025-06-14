@@ -5,7 +5,7 @@ from pygame import image
 from image_utils import *
 from engine import *
 from pygame import mixer
-
+from load_files import LoadFiles
 # Configurações iniciais
 WIDTH, HEIGHT = 1980, 1024
 WHITE = (255, 255, 255)
@@ -26,7 +26,12 @@ class TatiskyGame:
         pygame.display.set_caption("Roleta")
         self.clock = pygame.time.Clock()
         self.font_info = pygame.font.SysFont('Montserrat Heavy', 25, False)
+        self.font_title = pygame.font.SysFont('Montserrat Heavy', 55, False)
         self.font_counter = pygame.font.SysFont('Montserrat Heavy', 100, False)
+        self.championship_extractor = ChampionshipExtractor()
+        self.graphics = LoadFiles(self.championship_extractor.get_value())
+        self.championship = Championship(self.graphics.club_list)
+        self.actual_game = self.championship.get_next_game()
         self.countdown = 0
         self.countdown_timer = datetime.now()
         self.zoom_countdown = 1
@@ -36,31 +41,16 @@ class TatiskyGame:
         self.angle_step = 360 / SECTORS
         self.roleta_center = (WIDTH // 2, HEIGHT // 2)
         self.radius = 200
-        self.background = image.load('assets/palcobackground.png').convert_alpha()
-        self.qrcode = image.load('assets/qr_code.png').convert_alpha()
-        self.result_board = image.load('assets/board_last_result.png').convert_alpha()
-        self.cron_board = image.load('assets/cron.png').convert_alpha()
-        self.heart_image = image.load('assets/heart.png').convert_alpha()
-        self.coins_image = image.load('assets/coins_gift.png').convert_alpha()
-        self.podium_image = image.load('assets/podio.png').convert_alpha()
         self.like_engine = Like()
         self.gift_engine = Gift()
+        self.var_engine = Var()
+        self.share_engine = Share()
         self.last_result_list = []
         # Criar setores com números
         self.current_angle = 0
         self.speed = 0
         self.spinning = False
-        self.gift_image = resize(image.load('assets/coins.png').convert_alpha(), 0.08)
-        self.like_image = resize(image.load('assets/likes.png').convert_alpha(), 0.12)
         self.center_wheel = None
-        self.border_wheel = image.load('assets/borda.png').convert_alpha()
-        self.flanelinha = image.load('assets/flanelinha.png').convert_alpha()
-        self.table = image.load('assets/tabela.png').convert_alpha()
-        self.sup_line = image.load('assets/sup_line.png').convert_alpha()
-        self.sup_line_spin = image.load('assets/sup_line_spin.png').convert_alpha()
-        self.bottom_line = image.load('assets/botton_line.png').convert_alpha()
-        self.sup_line_top_liker = image.load('assets/sup_line_top_liker.png').convert_alpha()
-        self.sup_line_top_gifter = image.load('assets/sup_line_top_gifter.png').convert_alpha()
         self.regular_last_angle = None
         self.to_finish_angle = None
         self.running = False
@@ -87,6 +77,8 @@ class TatiskyGame:
         self.like_left_to_show = 0
         self.coins_list = []
         self.coins_left_to_show = 0
+        self.sharing_list = []
+        self.sharing_left_to_show = 0
         self.like_rank = Ranking('liker')
         self.gift_rank = Ranking('gifter')
 
@@ -110,42 +102,43 @@ class TatiskyGame:
         for value in self.actual_table_values:
 
             if self.result is not None and next_position == self.result:
-                cost_surface = self.font_info.render(value,
-                                                     True,
-                                                     YELLOW)
+                cost_surface = value.selected_result
             else:
-                cost_surface = self.font_info.render(value,
-                                                     True,
-                                                     WHITE)
+                cost_surface = value.result
 
-            position_cost_text = (1760, y + (61 * next_position))
+            if value.effect.club:
+                position_cost_text = (1725, y + (61 * next_position) - 18)
+            else:
+                position_cost_text = (1725, y + (61 * next_position))
+
             self.screen.blit(cost_surface, position_cost_text)
             next_position += 1
 
     def draw_podium(self):
-        self.gradient_rect_podium(self.podium_image, (320, 920))
-        name_position_list = [(446, 841), (368, 865), (524, 876)]
-        points_position_list = [(420, 800), (320, 800), (500, 800)]
-        image_position_list = [(418, 870), (335, 890), (501, 902)]
-        self.screen.blit(self.podium_image, (320, 920))
+        y_adjust = 298
+        self.gradient_rect_podium(self.graphics.podium_image, (1377, 920))
+        name_position_list = [(446+1057, 841), (368+1057, 865), (524+1057, 876)]
+        points_position_list = [(420+1057, 800), (320+1057, 800), (500+1057, 800)]
+        image_position_list = [(418+1057, 870), (335+1057, 890), (501+1057, 902)]
+        self.screen.blit(self.graphics.podium_image, (1377, 920))
         zip_to_blit = zip(self.like_rank.rank_list, name_position_list, points_position_list, image_position_list)
         for rank_user, name_position, point_position, image_position in zip_to_blit:
             self.screen.blit(rank_user.name, (name_position[0] - rank_user.name.get_width()/2,name_position[1]))
             self.screen.blit(rank_user.points, point_position)
             self.screen.blit(rank_user.image, image_position)
-        self.screen.blit(self.sup_line_top_liker, (320, 730))
+        self.screen.blit(self.graphics.sup_line_top_liker, (1377, 730))
 
-        self.gradient_rect_podium(self.podium_image, (1377, 920))
-        name_position_list = [(446+1057, 841), (368+1057, 865), (524+1057, 876)]
-        points_position_list = [(420+1057, 800), (320+1057, 800), (500+1057, 800)]
-        image_position_list = [(418+1057, 870), (335+1057, 890), (501+1057, 902)]
-        self.screen.blit(self.podium_image, (1377, 920))
+        self.gradient_rect_podium(self.graphics.podium_image, (1377, 920 - y_adjust))
+        name_position_list = [(446+1057, 841 - y_adjust), (368+1057, 865 - y_adjust), (524+1057, 876 - y_adjust)]
+        points_position_list = [(420+1057, 800 - y_adjust), (320+1057, 800 - y_adjust), (500+1057, 800 - y_adjust)]
+        image_position_list = [(418+1057, 870 - y_adjust), (335+1057, 890 - y_adjust), (501+1057, 902 - y_adjust)]
+        self.screen.blit(self.graphics.podium_image, (1377, 920 - y_adjust))
         zip_to_blit = zip(self.gift_rank.rank_list, name_position_list, points_position_list, image_position_list)
         for rank_user, name_position, point_position, image_position in zip_to_blit:
             self.screen.blit(rank_user.name, (name_position[0] - rank_user.name.get_width() / 2, name_position[1]))
             self.screen.blit(rank_user.points, point_position)
             self.screen.blit(rank_user.image, image_position)
-        self.screen.blit(self.sup_line_top_gifter, (1377, 730))
+        self.screen.blit(self.graphics.sup_line_top_gifter, (1377, 730 - y_adjust))
 
     def gradient_rect_podium(self, target_rect, position):
         colour_rect = pygame.Surface((2, 2)).convert_alpha()
@@ -156,28 +149,29 @@ class TatiskyGame:
 
     def draw_roulette(self):
         rotated_wheel = pygame.transform.rotate(self.next_spin.image_wheel, self.current_angle)
-        wheel_rect = rotated_wheel.get_rect(center=self.background.get_rect().center)
-        self.screen.blit(rotated_wheel, (wheel_rect[0],wheel_rect[1] + 150))
-        self.screen.blit(self.border_wheel, (752, 445))
+        wheel_rect = rotated_wheel.get_rect(center=(357, 545))
+        self.screen.blit(rotated_wheel, (wheel_rect[0], wheel_rect[1] + 150))
+        self.screen.blit(self.graphics.border_wheel, (120, 476))
         if self.subscriber_name_to_draw:
             self.draw_subscriber_name()
 
     def draw_subscriber_name(self):
         font = pygame.font.SysFont('Montserrat Heavy', 75, False)
         cost_surface = font.render(f'Roleta do {self.subscriber_name_to_draw}', True, WHITE)
-        info_board_surface = pygame.Surface((cost_surface.get_width() + 100, 100), pygame.SRCALPHA).convert_alpha()
+        info_board_surface = pygame.Surface((708, 100), pygame.SRCALPHA).convert_alpha()
         info_board_surface.fill((255,0,0,100))
-        position_sub_name = (WIDTH/2 - cost_surface.get_width()/2, 920)
-        position_info_board = (WIDTH / 2 - info_board_surface.get_width() / 2, 920 - cost_surface.get_height()/2)
-        position_sup_line = (WIDTH / 2 - self.sup_line.get_width()/2, position_info_board[Y_POSITION] - 30)
-        position_bottom_line = (WIDTH / 2 - self.bottom_line.get_width()/2, position_info_board[Y_POSITION] + 80)
+
+        position_sub_name = (info_board_surface.get_width()/2 - cost_surface.get_width()/2 - 16, 372-134)
+        position_info_board = (16, 353 - 134)
+        position_sup_line = (81, 323 - 134)
+        position_bottom_line = (81, 432 - 134)
+
         self.gradient_rect(info_board_surface, position_info_board)
-        self.screen.blit(self.sup_line, position_sup_line)
-        self.screen.blit(self.bottom_line, position_bottom_line)
+        self.screen.blit(self.graphics.sup_line, position_sup_line)
+        self.screen.blit(self.graphics.bottom_line, position_bottom_line)
         self.screen.blit(cost_surface, position_sub_name)
 
     def gradient_rect(self, target_rect, position):
-        """ Draw a horizontal-gradient filled rectangle covering <target_rect> """
         colour_rect = pygame.Surface((2, 2)).convert_alpha()
         pygame.draw.line(colour_rect, ROXO, (0, 0), (0, 1))  # left colour line
         pygame.draw.line(colour_rect, ROSA, (1, 0), (1, 1))  # right colour line
@@ -211,14 +205,17 @@ class TatiskyGame:
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_n:
                         with open('spin.csv', 'w') as file:
-                            file.write('0;0')
+                            file.write('0;0;0')
                             self.start_game = True
                     if event.key == pygame.K_c:
                         self.start_game = True
         self.like_engine.update(self)
         self.gift_engine.update(self)
+        self.var_engine.update()
+        self.share_engine.update(self)
         self.gift_engine.start_spin()
         self.like_engine.start_spin()
+        self.share_engine.start_spin()
         while not self.running:
             if not self.like_engine.validate_extract():
                 start_tki = self.font_info.render('Inicie o TKI', True, RED)
@@ -228,12 +225,13 @@ class TatiskyGame:
                 self.running = True
 
         while self.running:
-            self.screen.blit(self.background, (0, 0))
-            self.screen.blit(self.table, (1662, 267))
+            self.screen.blit(self.graphics.background, (0, 0))
+            self.screen.blit(self.graphics.table, (1628, 267))
             self.like_engine.update(self)
             self.gift_engine.update(self)
+            self.share_engine.update(self)
             self.draw_last_result_board()
-            self.draw_qr_code()
+            # self.draw_qr_code()
             if self.transparent_time and self.is_start_cron:
                 self.transparent_time_count()
             else:
@@ -296,12 +294,44 @@ class TatiskyGame:
         self.gift_rank.update()
         self.get_new_hearts()
         self.get_new_coins()
+        self.get_new_sharing()
         for heart in self.heart_list:
             heart.update(self)
         for coin in self.coins_list:
             coin.update(self)
+        for sharing in self.sharing_list:
+            sharing.update(self)
         self.validate_all_hearts()
         self.validate_all_coins()
+        self.validate_all_sharing()
+        self.actual_game.update(self)
+        if self.actual_game.round_result:
+            self.update_game_result()
+
+    def update_game_result(self):
+        if self.next_spin.__class__.__name__ == 'Var' and self.spinning:
+            pass
+        else:
+            if not self.actual_game.round_result.goal:
+                self.defense_result()
+                self.actual_game.round_result = None
+            else:
+                if self.actual_game.round_result.var:
+                    self.var_engine.spin_wheel()
+                    self.actual_game.round_result.var = False
+                else:
+                    self.goal_result()
+
+    def defense_result(self):
+        if self.actual_game.round_result.var:
+            #gol anulado
+            pass
+        else:
+            #defesa
+            pass
+
+    def goal_result(self):
+        pass
 
     def validate_all_hearts(self):
         remove = False
@@ -321,24 +351,44 @@ class TatiskyGame:
                 remove = True
             next_index += 1
 
+    def validate_all_sharing(self):
+        remove = False
+        next_index = 0
+        while not remove and next_index < len(self.sharing_list):
+            if not self.sharing_list[next_index].is_valid:
+                self.sharing_list.pop(next_index)
+                remove = True
+            next_index += 1
+
     def get_new_hearts(self):
-        while len(self.heart_list) < 50 and self.like_left_to_show:
-            new_heart = Heart(self.heart_image, randint(300, 750), randint(964, 1300))
+        while len(self.heart_list) < 20 and self.like_left_to_show:
+            new_heart = Heart(self.graphics.heart_image, randint(20, 120), randint(964, 1300))
             self.heart_list.append(new_heart)
             self.like_left_to_show -= 1
 
     def get_new_coins(self):
         while len(self.coins_list) < 10 and self.coins_left_to_show:
-            new_coin = Coins(self.coins_image, randint(1228, 1666), randint(964, 1500))
+            new_coin = Coins(self.graphics.coins_image, randint(576, 680), randint(964, 1500))
             self.coins_list.append(new_coin)
             self.coins_left_to_show -= 1
 
+    def get_new_sharing(self):
+        while len(self.sharing_list) < 15 and self.like_left_to_show:
+            new_sharing = Sharing(self.graphics.sharing_image, random.choice([randint(20, 120), randint(576, 680)]),
+                                  randint(964, 1300))
+            self.sharing_list.append(new_sharing)
+            self.sharing_left_to_show -= 1
+
     def get_next_spin(self):
         if self.next_spin is None:
-            if self.gift_engine.spin:
+            if self.var_engine.spin:
+                self.next_spin = self.var_engine
+            elif self.gift_engine.spin:
                 self.next_spin = self.gift_engine
             elif self.like_engine.spin:
                 self.next_spin = self.like_engine
+            elif self.share_engine.spin:
+                self.next_spin = self.share_engine
 
     def countdown_spin(self):
         if datetime.now() - self.countdown_timer <= timedelta(milliseconds=1500):
@@ -352,13 +402,13 @@ class TatiskyGame:
 
         info_board_surface = pygame.Surface((text_countdown.get_width() + 100, 100), pygame.SRCALPHA).convert_alpha()
         info_board_surface.fill((255, 0, 0, 100))
-        position_countdown = (WIDTH / 2 - text_countdown.get_width() / 2, 305)
-        position_info_board = (WIDTH / 2 - info_board_surface.get_width() / 2, 320 - text_countdown.get_height() / 2)
-        position_sup_line = (WIDTH / 2 - self.sup_line_spin.get_width() / 2, position_info_board[Y_POSITION] - 30)
-        position_bottom_line = (WIDTH / 2 - self.bottom_line.get_width() / 2, position_info_board[Y_POSITION] + 80)
+        position_countdown = (55, 372)
+        position_info_board = (16, 353)
+        position_sup_line = (81, 323)
+        position_bottom_line = (81, 432)
         self.gradient_rect(info_board_surface, position_info_board)
-        self.screen.blit(self.sup_line_spin, position_sup_line)
-        self.screen.blit(self.bottom_line, position_bottom_line)
+        self.screen.blit(self.graphics.sup_line_spin, position_sup_line)
+        self.screen.blit(self.graphics.bottom_line, position_bottom_line)
         self.screen.blit(text_countdown, position_countdown)
         # self.screen.blit(cost_surface, (WIDTH/2, HEIGHT/2))
 
@@ -388,35 +438,41 @@ class TatiskyGame:
                         self.last_result_list.pop(0)
                     self.last_result_list.append((self.next_spin.table_type, self.actual_table_values[self.result]))
                     with open('spin.csv', 'w') as file:
-                        file.write(f'{self.gift_engine.all_spinning};{self.like_engine.all_spinning}')
+                        file.write(f'{self.gift_engine.all_spinning};{self.like_engine.all_spinning};{self.share_engine.all_spinning}')
                     self.result_countdown = datetime.now()
                     self.verify_result(self.actual_table_values[self.result])
 
     def draw_last_result_board(self):
-        y = 212
+        y = 203
         next_position = 0
-        self.screen.blit(self.result_board, (809, 11))
-        x = 825
+        self.screen.blit(self.graphics.result_board, (1580, 4))
+        x = 1596
         for type_value, value in reversed(self.last_result_list):
             if type_value == 'coins':
-                self.screen.blit(self.gift_image, (x, y - (61 * next_position)))
+                self.screen.blit(self.graphics.gift_image, (x, y - (61 * next_position)))
+            elif type_value == 'likes':
+                self.screen.blit(self.graphics.like_image, (x, y - (61 * next_position)))
+            elif type_value == 'shares':
+                self.screen.blit(self.graphics.share_image, (x+2, y - (61 * next_position) + 3))
+
+            cost_surface = value.result
+
+            if value.effect.club:
+                position_cost_text = (x + 55, y - (61 * next_position) - 8)
             else:
-                self.screen.blit(self.like_image, (x, y - (61 * next_position)))
-
-            cost_surface = self.font_info.render(value, True, YELLOW)
-
-            position_cost_text = (x + 55, y - (61 * next_position) + 10)
+                position_cost_text = (x + 55, y - (61 * next_position) + 10)
             self.screen.blit(cost_surface, position_cost_text)
             next_position += 1
 
-        self.screen.blit(self.cron_board, (1272, 104))
+        self.screen.blit(self.graphics.sup_line_time_skin, (1377, 305))
+        self.screen.blit(self.graphics.cron_board, (1425, 352))
         self.get_time_string()
         if self.is_start_cron:
             cost_surface = self.font_info.render(self.transparent_time_string, True, WHITE)
         else:
             cost_surface = self.font_info.render(self.transparent_time_string, True, RED)
         cost_surface = resize(cost_surface, 3)
-        position_cost_text = (1280, 115)
+        position_cost_text = (1435, 363)
         self.screen.blit(cost_surface, position_cost_text)
 
     def transparent_time_count(self):
@@ -430,14 +486,15 @@ class TatiskyGame:
 
     def verify_result(self, result):
         for minutes in range(10):
-            if f'+ {minutes} Min' in result:
-                self.plus_chron(timedelta(seconds=minutes*60) + self.bonus_time_transparent)
-                self.bonus_time_transparent = timedelta(0)
-            if f'+ 30 Segundos Extras na Próxima' in result:
-                self.bonus_time_transparent += timedelta(seconds=30)
+            result.effect.apply_effect(self)
+            # if f'+ {minutes} Min' in result.effect.description:
+            #     self.plus_chron(timedelta(seconds=minutes*60) + self.bonus_time_transparent)
+            #     self.bonus_time_transparent = timedelta(0)
+            # if f'+ 30 Segundos Extras na Próxima' in result:
+            #     self.bonus_time_transparent += timedelta(seconds=30)
 
     def draw_qr_code(self):
-        self.screen.blit(self.qrcode, (22, 462))
+        self.screen.blit(self.graphics.qrcode, (22, 462))
 
 
 if __name__ == '__main__':
