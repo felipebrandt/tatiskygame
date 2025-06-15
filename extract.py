@@ -49,7 +49,7 @@ class Extractor:
             return int(
                 self.driver.find_elements(By.CSS_SELECTOR, 'body > div > div > div.background.textContainer > div')[
                     0].text.replace(self.to_replace_tuple[0], '').replace(self.to_replace_tuple[1], '').split(' / ')[
-                    0].replace('.', ''))
+                    1].replace('.', ''))
         except Exception as e:
             return 0
 

@@ -1,7 +1,7 @@
 import random
 
 from extract import *
-from image_utils import resize
+from image_utils import resize, resize_without_proportion
 from pygame import image, draw, Color, Rect, font, Surface, SRCALPHA
 from pygame.sprite import Sprite
 from datetime import datetime
@@ -21,24 +21,24 @@ class Effect:
         self.club = club
 
     def apply_effect(self, game):
-        if 'Chance de Gol' in self.description:
+        if 'de Gol' in self.description:
             if self.club == 'club_a':
                 game.actual_game.club_a.plus_goal_chance(self.value/100)
             if self.club == 'club_b':
                 game.actual_game.club_b.plus_goal_chance(self.value/100)
         if 'Skin Pro' in self.description:
             game.transparent_time += timedelta(minutes=self.value)
-        if 'Chance de VAR' in self.description:
+        if 'de VAR' in self.description:
             if self.club == 'club_a':
                 game.actual_game.club_a.plus_var_chance(self.value/100)
             if self.club == 'club_b':
                 game.actual_game.club_b.plus_var_chance(self.value/100)
-        if 'Seg Ataque' in self.description:
+        if 'Seg ATK' in self.description:
             if self.club == 'club_a':
                 game.actual_game.club_a.plus_time_atk(timedelta(seconds=self.value))
             if self.club == 'club_b':
                 game.actual_game.club_b.plus_time_atk(timedelta(seconds=self.value))
-        if 'Seg Defesa' in self.description:
+        if 'Seg DEF' in self.description:
             if self.club == 'club_a':
                 game.actual_game.club_a.plus_time_def(timedelta(seconds=self.value))
             if self.club == 'club_b':
@@ -58,7 +58,7 @@ class TableResult:
 
     @staticmethod
     def get_result_surface(string_result, club):
-        font_info = font.SysFont('Montserrat Heavy', 24, False)
+        font_info = font.SysFont('Montserrat Heavy', 40, False)
         selected = font_info.render(string_result,
                               True,
                               (255, 255, 0))
@@ -102,6 +102,7 @@ class Wheel:
         self.table_type = None
         self.image_wheel = None
         self.subscriber_name_list = list()
+        self.is_spin = False
 
     def start_spin(self):
         with open('spin.csv') as file:
@@ -153,23 +154,23 @@ class Wheel:
     def get_table_type(self):
 
         if self.table_type == 'coins':
-            club = [Effect('+ 5% Chance de Gol', 5, 'club_a'), Effect('+ 5% Chance de Gol', 5, 'club_b'),
-                    Effect('+ 10% Chance de Gol', 10, 'club_a'), Effect('+ 10% Chance de Gol', 10, 'club_b'),
-                    Effect('+ 15% Chance de Gol', 15, 'club_a'), Effect('+ 15% Chance de Gol', 15, 'club_b')]
+            club = [Effect('+ 5% de Gol', 5, 'club_a'), Effect('+ 5% de Gol', 5, 'club_b'),
+                    Effect('+ 10% de Gol', 10, 'club_a'), Effect('+ 10% de Gol', 10, 'club_b'),
+                    Effect('+ 15% de Gol', 15, 'club_a'), Effect('+ 15% de Gol', 15, 'club_b')]
             tatisky = [Effect('+1 Min Skin Pro', 1), Effect('+1 Min Skin Pro', 1),
                        Effect('+2 Min Skin Pro', 2), Effect('+2 Min Skin Pro', 2),
                        Effect('+3 Min Skin Pro', 3), Effect('+4 Min Skin Pro', 4)]
-        elif self.table_type == 'share':
-            club = [Effect('+ 15% Chance de VAR', 15, 'club_a'), Effect('+ 15% Chance de VAR', 15, 'club_b'),
-                    Effect('+ 20% Chance de VAR', 20, 'club_a'), Effect('+ 20% Chance de VAR', 20, 'club_b'),
-                    Effect('+ 25% Chance de VAR', 25, 'club_a'), Effect('+ 25% Chance de VAR', 25, 'club_b')]
+        elif self.table_type == 'shares':
+            club = [Effect('+ 15% de VAR', 15, 'club_a'), Effect('+ 15% de VAR', 15, 'club_b'),
+                    Effect('+ 20% de VAR', 20, 'club_a'), Effect('+ 20% de VAR', 20, 'club_b'),
+                    Effect('+ 25% de VAR', 25, 'club_a'), Effect('+ 25% de VAR', 25, 'club_b')]
             tatisky = [Effect('Carinho', 0), Effect('Troca a Skin', 0), Effect('Fica de Pé', 0),
                        Effect( 'Dança Gatinha', 0), Effect('Mostra o Look', 0), Effect('Dança na Cadeira', 0)]
         else:
-            club = [Effect('+ 5 Seg Ataque', 5, 'club_a'), Effect('+ 5 Seg Ataque', 5, 'club_b'),
-                    Effect('+ 5 Seg Defesa', 5, 'club_a'), Effect('+ 5 Seg Defesa', 5, 'club_b'),
-                    Effect('+ 10 Seg Ataque', 10, 'club_a'), Effect('+ 10 Seg Ataque', 10, 'club_b'),
-                    Effect('+ 10 Seg Defesa', 10, 'club_a'), Effect('+ 10 Seg Defesa', 10, 'club_b')]
+            club = [Effect('+ 5 Seg ATK', 5, 'club_a'), Effect('+ 5 Seg ATK', 5, 'club_b'),
+                    Effect('+ 5 Seg DEF', 5, 'club_a'), Effect('+ 5 Seg DEF', 5, 'club_b'),
+                    Effect('+ 10 Seg ATK', 10, 'club_a'), Effect('+ 10 Seg ATK', 10, 'club_b'),
+                    Effect('+ 10 Seg DEF', 10, 'club_a'), Effect('+ 10 Seg DEF', 10, 'club_b')]
             tatisky = [Effect('Manda um Beijo', 0), Effect('Faz um Brinde', 0),
                        Effect('Desfila', 0), Effect('Faz Pose', 0)]
 
@@ -192,8 +193,10 @@ class Bar:
         self.level_icon = None
 
     def start_bar(self, type_extractor, divisor, icon_location, bar_location, size):
-        self.bar_foreground = resize(image.load('assets/bar_foreground.png').convert_alpha(), 0.5)
-        self.bar_background = resize(image.load('assets/bar_background.png').convert_alpha(), 0.5)
+        self.bar_foreground = resize_without_proportion(image.load('assets/bar_foreground.png').convert_alpha(),
+                                                        0.5, 0.75)
+        self.bar_background = resize_without_proportion(image.load('assets/bar_background.png').convert_alpha(),
+                                                        0.5, 0.75)
         self.icon = resize(image.load(f'assets/{type_extractor}.png').convert_alpha(), size)
         self.extract = Extractor(type_extractor)
         self.location = {'icon': icon_location,
@@ -205,19 +208,21 @@ class Bar:
         return f'{(self.like_to_show % self.divisor)}/{self.divisor}'
 
     def draw_bar(self, game):
+        font_title = font.SysFont('Montserrat Heavy', 60, False)
         game.screen.blit(self.icon, self.location['icon'])
         game.screen.blit(self.bar_background, self.location['bar'])
         draw.rect(game.screen,
                   Color(255, 0, 0),
                   Rect(self.location['bar'][0] + 8, self.location['bar'][1] + 8,
-                       455 * (self.like_to_show / self.divisor), 14))
+                       455 * (self.like_to_show / self.divisor), 24))
 
-        cost_surface = game.font_info.render(self.get_last_amount_string(), True, (255, 255, 255))
+        cost_surface = font_title.render(self.get_last_amount_string(), True, (255, 255, 255))
         position_cost_text = (
         self.bar_foreground.get_width() / 2 - cost_surface.get_width() / 2 + self.location['bar'][0],
         self.bar_foreground.get_height() / 2 - cost_surface.get_height() / 2 + self.location['bar'][1])
-        game.screen.blit(cost_surface, position_cost_text)
+
         game.screen.blit(self.bar_foreground, self.location['bar'])
+        game.screen.blit(cost_surface, position_cost_text)
 
 
 class Like(Wheel, Bar):
@@ -371,8 +376,9 @@ class Var(Wheel):
 
     def var_table_results(self):
         table_results = [Effect('Goooool', 0), Effect('Goooool', 0), Effect('Goooool', 0), Effect('Goooool', 0),
-                      Effect('Goooool', 0), Effect('Goooool', 0), Effect('Goooool', 0), Effect('Impedimento', 1),
-                      Effect('Falta de Ataque', 1), Effect('Gol de Mão', 1)]
+                         Effect('Goooool', 0), Effect('Goooool', 0), Effect('Goooool', 0), Effect('Goooool', 0),
+                         Effect('Goooool', 0), Effect('Impedimento', 1), Effect('Falta de Ataque', 1),
+                         Effect('Gol de Mão', 1)]
         for table_result in table_results:
             self.table.append(TableResult(table_result))
 
@@ -461,7 +467,44 @@ class RoundResult:
     def __init__(self, goal, var):
         self.goal = goal
         self.var = var
+        self.get_goal = False
 
+
+# class TimeCountdown:
+#     def __init__(self, countdown_seconds, delay, string_show_message, color_message, font_message, has_info_board):
+#         self.countdown_seconds = countdown_seconds
+#         self.delay = delay
+#         self.string_show_message = string_show_message
+#         self.color_message = color_message
+#         self.font_message = font_message
+#         self.start_countdown = datetime.now()
+#         self.has_info_board = has_info_board
+#
+#     def update_countdown(self, game):
+#         if datetime.now() - self.start_countdown <= timedelta(milliseconds=self.delay):
+#             text_countdown = self.font_message.render(self.string_show_message.format(countdown=self.countdown_seconds),
+#                                                       True, self.color_message)
+#         else:
+#             self.countdown_seconds -= 1
+#             self.start_countdown = datetime.now()
+#             text_countdown = self.font_message.render(self.string_show_message.format(countdown=self.countdown_seconds),
+#                                                       True, self.color_message)
+#
+#         phase = 'o Ataque'
+#         actual_club = self.actual_club_atk
+#         if self.phase_game:
+#             phase = 'a Defesa'
+#             actual_club = self.actual_club_def
+#
+#         club_text = game.font_title.render(f'{actual_club.club_name} iniciará {phase} em:', True, (255, 255, 255))
+#         info_board_surface = Surface((text_countdown.get_width() + 100, 120), SRCALPHA).convert_alpha()
+#         info_board_surface.fill((255, 0, 0, 100))
+#         position_countdown = (WIDTH/2 - text_countdown.get_width()/2, 405)
+#         position_info_board = (WIDTH/2 - info_board_surface.get_width()/2, 353)
+#         position_club_text = (WIDTH/2 - club_text.get_width()/2, 358)
+#         game.gradient_rect(info_board_surface, position_info_board)
+#         game.screen.blit(club_text, position_club_text)
+#         game.screen.blit(text_countdown, position_countdown)
 
 class Game:
 
@@ -482,6 +525,8 @@ class Game:
         self.start_countdown = 3
         self.period = 1
         self.game_time = timedelta(seconds=0)
+        self.period_countdown = 0
+        self.period_time = datetime.now()
 
     def start_round(self):
         if self.actual_club_atk:
@@ -514,33 +559,36 @@ class Game:
         return True if self.phase_game == 0 else False
 
     def update(self, game):
-        if not self.is_compute:
-            if not self.is_start_round:
-                self.start_round()
-                game.like_engine.update_extract_status(False)
-                game.like_engine.force_extract(game)
-            elif self.start_countdown <= 0:
-                if self.is_phase_atk():
-                    if self.phase_countdown > 0:
-                        self.update_phase_countdown(game)
-                    else:
-                        self.change_game_time()
-                        self.actual_club_atk.crowd_scream = game.like_engine.force_extract(game)
-                        self.start_def_phase()
+        if not self.period_countdown:
+            if not self.round_result:
+                if not self.is_compute:
+                    if not self.is_start_round:
+                        self.start_round()
+                        game.like_engine.update_extract_status(False)
+                        game.like_engine.force_extract(game)
+                    elif self.start_countdown <= 0:
+                        if self.is_phase_atk():
+                            if self.phase_countdown > 0:
+                                self.update_phase_countdown(game)
+                            else:
+                                self.actual_club_atk.crowd_scream = game.like_engine.force_extract(game)
+                                self.start_def_phase()
 
-                if not self.is_phase_atk():
-                    if self.phase_countdown > 0:
-                        self.update_phase_countdown(game)
-                    else:
-                        self.change_game_time()
-                        self.actual_club_def.crowd_scream = game.like_engine.force_extract(game)
-                        self.is_compute = True
-                        game.like_engine.update_extract_status(True)
+                        if not self.is_phase_atk():
+                            if self.phase_countdown > 0:
+                                self.update_phase_countdown(game)
+                            else:
+                                self.change_game_time()
+                                self.actual_club_def.crowd_scream = game.like_engine.force_extract(game)
+                                self.is_compute = True
+                                game.like_engine.update_extract_status(True)
 
-            else:
-                self.update_countdown(game)
-        elif not self.round_result:
-            self.compute_round()
+                    else:
+                        self.update_countdown(game)
+                elif not self.round_result:
+                    self.compute_round()
+        else:
+            self.update_game_break(game)
         self.draw_score_board(game)
 
     def change_game_time(self):
@@ -552,7 +600,8 @@ class Game:
             return
 
     def game_break(self):
-        pass
+        self.period_countdown = 3
+        self.period_time = datetime.now()
 
     def change_period(self):
         if self.period == 2:
@@ -579,10 +628,22 @@ class Game:
 
     def draw_score_board(self, game):
         game.screen.blit(game.graphics.scoreboard, (WIDTH/2-game.graphics.scoreboard.get_width()/2, 77))
-        period = game.font_info.render(f'{self.period}T', True, (255, 255, 255))
-        game_time = game.font_info.render(f'{self.get_time_string()}', True, (0, 0, 0))
-        game.screen.blit(period, (955, 80))
-        game.screen.blit(game_time, (980, 80))
+        period = game.font_title.render(f'{self.period}T', True, (255, 255, 255))
+        game_time = game.font_title.render(f'{self.get_time_string()}', True, (0, 0, 0))
+        game.screen.blit(period, (906, 78))
+        game.screen.blit(game_time, (972, 78))
+
+        game.screen.blit(self.club_a.escudo_scoreboard, (584, 108))
+        club_a_name = game.font_club_name.render(f'{self.club_a.club_name}', True, (0, 0, 0))
+        game.screen.blit(club_a_name, (840 - 196/2 - club_a_name.get_width()/2, 125))
+
+        game.screen.blit(self.club_b.escudo_scoreboard, (1330, 108))
+        club_b_name = game.font_club_name.render(f'{self.club_b.club_name}', True, (0, 0, 0))
+        game.screen.blit(club_b_name, (1130 + 196/2 - club_b_name.get_width()/2, 125))
+
+        score = game.font_counter.render(f'{self.club_a.goal}-{self.club_b.goal}', True, (255, 255, 255))
+
+        game.screen.blit(score, (940, 110))
 
     def compute_round(self):
         crowd_goal_chance = self.get_crowd_goal_chance_value()
@@ -669,6 +730,20 @@ class Game:
         position_club_text = (WIDTH/2 - club_text.get_width()/2, 158)
         game.screen.blit(club_text, position_club_text)
         game.screen.blit(text_countdown, position_countdown)
+
+    def update_game_break(self, game):
+        if datetime.now() - self.period_time >= timedelta(milliseconds=1000):
+            self.period_countdown -= 1
+            self.period_time = datetime.now()
+
+        period_text = game.font_counter.render('Segundo Tempo', True, (255, 255, 255))
+
+        info_board_surface = Surface((period_text.get_width() + 100, 100), SRCALPHA).convert_alpha()
+        info_board_surface.fill((255, 0, 0, 100))
+        position_info_board = (WIDTH / 2 - info_board_surface.get_width() / 2, 353)
+        position_period_text = (WIDTH / 2 - period_text.get_width() / 2, 358)
+        game.gradient_rect(info_board_surface, position_info_board)
+        game.screen.blit(period_text, position_period_text)
 
 
 class Championship:

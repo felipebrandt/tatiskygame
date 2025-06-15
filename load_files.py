@@ -3,18 +3,23 @@ from image_utils import resize
 from datetime import datetime, timedelta
 
 
+ATK = 15
+DEF = 15
+
+
 class Club:
     def __init__(self, name: str):
         self.club_name = name
         self.escudo = resize(image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(), 0.35)
         self.escudo_icon = resize(image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(), 0.1)
-        self.escudo_scoreboard = resize(image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(), 0.1)
+        self.escudo_scoreboard = resize(image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(),
+                                        0.13)
         self.crowd_scream = 0
         self.goal = 0
         self.var_chance = 0.05
         self.goal_chance = 0.1
-        self.time_atk = timedelta(seconds=20)
-        self.time_def = timedelta(seconds=20)
+        self.time_atk = timedelta(seconds=ATK)
+        self.time_def = timedelta(seconds=DEF)
         self.end_act = None
 
     def plus_time_atk(self, time):
@@ -49,8 +54,8 @@ class Club:
         self.goal = 0
         self.var_chance = 0.05
         self.goal_chance = 0.1
-        self.time_atk = timedelta(seconds=20)
-        self.time_def = timedelta(seconds=20)
+        self.time_atk = timedelta(seconds=ATK)
+        self.time_def = timedelta(seconds=DEF)
         self.end_act = None
 
 
@@ -86,7 +91,9 @@ class LoadFiles:
         self.sup_line_top_gifter = image.load('assets/sup_line_top_gifter.png').convert_alpha()
         self.sup_line_time_skin = image.load('assets/sup_line_top_skin.png').convert_alpha()
         self.ball = image.load('assets/times/bola.png').convert_alpha()
-        self.scoreboard = image.load('assets/times/placar.png').convert_alpha()
+        self.scoreboard = resize(image.load('assets/times/placar.png').convert_alpha(), 1.3)
+        self.var_board = image.load('assets/times/var.png').convert_alpha()
+        self.goal = image.load('assets/times/goal.png').convert_alpha()
         self.goalkeeper = Goalkeeper()
         self.club_dict = {}
         self.club_list = []

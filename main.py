@@ -19,6 +19,14 @@ X_POSITION = 0
 Y_POSITION = 1
 
 
+class ResultCountdown:
+    def __init__(self, game_result_countdown, result_graphic, result_position):
+        self.game_result_countdown = game_result_countdown
+        self.game_result_time = datetime.now()
+        self.result_graphic = result_graphic
+        self.result_position = result_position
+
+
 class TatiskyGame:
     def __init__(self):
         pygame.init()
@@ -26,7 +34,9 @@ class TatiskyGame:
         pygame.display.set_caption("Roleta")
         self.clock = pygame.time.Clock()
         self.font_info = pygame.font.SysFont('Montserrat Heavy', 25, False)
+        self.font_game_time = pygame.font.SysFont('Montserrat Heavy', 35, False)
         self.font_title = pygame.font.SysFont('Montserrat Heavy', 55, False)
+        self.font_club_name = pygame.font.SysFont('Montserrat Heavy', 55, False)
         self.font_counter = pygame.font.SysFont('Montserrat Heavy', 100, False)
         self.championship_extractor = ChampionshipExtractor()
         self.graphics = LoadFiles(self.championship_extractor.get_value())
@@ -81,6 +91,7 @@ class TatiskyGame:
         self.sharing_left_to_show = 0
         self.like_rank = Ranking('liker')
         self.gift_rank = Ranking('gifter')
+        self.game_result = None
 
     def get_time_string(self):
         minute = self.transparent_time.seconds // 60
@@ -209,9 +220,10 @@ class TatiskyGame:
                             self.start_game = True
                     if event.key == pygame.K_c:
                         self.start_game = True
-        self.like_engine.update(self)
-        self.gift_engine.update(self)
+
         self.var_engine.update()
+        self.gift_engine.update(self)
+        self.like_engine.update(self)
         self.share_engine.update(self)
         self.gift_engine.start_spin()
         self.like_engine.start_spin()
@@ -268,7 +280,9 @@ class TatiskyGame:
 
             if datetime.now() - self.result_countdown >= timedelta(milliseconds=5000):
                 if self.next_spin:
-                    if self.next_spin.spin and not self.spinning:
+                    if self.next_spin.is_spin and not self.spinning:
+                        self.next_spin = None
+                    elif self.next_spin.spin and not self.spinning:
                         self.next_spin.spin -= 1
                         if self.next_spin.subscriber_name_list:
                             self.subscriber_name_to_draw = self.next_spin.subscriber_name_list.pop()
@@ -282,8 +296,7 @@ class TatiskyGame:
                         self.zoom_countdown = 1
                         self.spinning = True
                         self.result = None
-                    if not self.next_spin.spin and not self.spinning:
-                        self.next_spin = None
+
 
             self.clock.tick(30)
 
@@ -307,6 +320,8 @@ class TatiskyGame:
         self.actual_game.update(self)
         if self.actual_game.round_result:
             self.update_game_result()
+        if self.game_result:
+            self.show_result_countdown()
 
     def update_game_result(self):
         if self.next_spin.__class__.__name__ == 'Var' and self.spinning:
@@ -317,10 +332,10 @@ class TatiskyGame:
                 self.actual_game.round_result = None
             else:
                 if self.actual_game.round_result.var:
-                    self.var_engine.spin_wheel()
-                    self.actual_game.round_result.var = False
+                    self.var_result()
                 else:
-                    self.goal_result()
+                    if not self.game_result:
+                        self.goal_result()
 
     def defense_result(self):
         if self.actual_game.round_result.var:
@@ -331,7 +346,28 @@ class TatiskyGame:
             pass
 
     def goal_result(self):
-        pass
+        if not self.actual_game.round_result.get_goal:
+            self.actual_game.actual_club_atk.plus_goal()
+            self.game_result = ResultCountdown(5, self.graphics.goal, (801, 323))
+            self.actual_game.round_result.get_goal = True
+
+    def var_result(self):
+        if not self.spinning:
+            self.var_engine.spin_wheel()
+            self.actual_game.round_result.var = False
+        self.game_result = ResultCountdown(5, self.graphics.var_board, (829, 721))
+
+    def show_result_countdown(self):
+        if datetime.now() - self.game_result.game_result_time >= timedelta(milliseconds=1000):
+            self.game_result.game_result_countdown -= 1
+            self.game_result.game_result_time = datetime.now()
+
+        position_result = self.game_result.result_position
+        self.screen.blit(self.game_result.result_graphic, position_result)
+        if self.game_result.game_result_countdown <= 0:
+            self.game_result = None
+            if self.actual_game.round_result.goal and self.actual_game.round_result.get_goal:
+                self.actual_game.round_result = None
 
     def validate_all_hearts(self):
         remove = False
@@ -383,12 +419,16 @@ class TatiskyGame:
         if self.next_spin is None:
             if self.var_engine.spin:
                 self.next_spin = self.var_engine
+                self.next_spin.is_spin = False
             elif self.gift_engine.spin:
                 self.next_spin = self.gift_engine
+                self.next_spin.is_spin = False
             elif self.like_engine.spin:
                 self.next_spin = self.like_engine
+                self.next_spin.is_spin = False
             elif self.share_engine.spin:
                 self.next_spin = self.share_engine
+                self.next_spin.is_spin = False
 
     def countdown_spin(self):
         if datetime.now() - self.countdown_timer <= timedelta(milliseconds=1500):
@@ -441,6 +481,7 @@ class TatiskyGame:
                         file.write(f'{self.gift_engine.all_spinning};{self.like_engine.all_spinning};{self.share_engine.all_spinning}')
                     self.result_countdown = datetime.now()
                     self.verify_result(self.actual_table_values[self.result])
+                    self.next_spin.is_spin = True
 
     def draw_last_result_board(self):
         y = 203
@@ -485,8 +526,8 @@ class TatiskyGame:
         self.transparent_time += plus_value
 
     def verify_result(self, result):
-        for minutes in range(10):
-            result.effect.apply_effect(self)
+        # for minutes in range(10):
+        result.effect.apply_effect(self)
             # if f'+ {minutes} Min' in result.effect.description:
             #     self.plus_chron(timedelta(seconds=minutes*60) + self.bonus_time_transparent)
             #     self.bonus_time_transparent = timedelta(0)
