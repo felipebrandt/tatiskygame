@@ -1,3 +1,4 @@
+import random
 import time
 from datetime import datetime, timedelta
 from selenium.webdriver.chrome.options import Options
@@ -22,6 +23,8 @@ class LoginTKinf:
 class Extractor:
 
     def __init__(self, type_extractor):
+        self.is_production = True
+        self.fake_sum_value = 0
         options = Options()
         options.page_load_strategy = 'eager'
         options.add_argument("--headless=new")
@@ -45,13 +48,22 @@ class Extractor:
             return 'Meta de Inscritos - ', ' Subs'
 
     def get_value(self):
+        if self.is_production:
+            return self.real_get_value()
+        return self.fake_get_value()
+
+    def real_get_value(self):
         try:
             return int(
                 self.driver.find_elements(By.CSS_SELECTOR, 'body > div > div > div.background.textContainer > div')[
                     0].text.replace(self.to_replace_tuple[0], '').replace(self.to_replace_tuple[1], '').split(' / ')[
-                    1].replace('.', ''))
+                    0].replace('.', ''))
         except Exception as e:
             return 0
+
+    def fake_get_value(self):
+        self.fake_sum_value += random.randint(100, 3500)
+        return self.fake_sum_value
 
     def is_possible_extract(self):
         return False if \
@@ -131,15 +143,21 @@ class ChampionshipExtractor:
         self.driver.get(f'https://www.terra.com.br/esportes/futebol/brasileiro-serie-a/tabela/#google_vignette')
         time.sleep(5)
 
-    def get_value(self):
+    def get_value_(self):
         try:
             club_list_names = []
             for club_element in self.driver.find_elements(By.XPATH, '//*[@id="mod-603-standings-round-robin"]/div[1]/div[1]/table/tbody/tr/td[3]/a'):
                 if len(club_list_names) < 16:
                     club_list_names.append(club_element.text)
+            self.driver.close()
             return club_list_names
         except Exception as e:
             return 0
+
+    def get_value(self):
+        dados = ['Palmeiras', 'Botafogo', 'Benfica', 'Chelsea', 'Internazionale', 'Fluminense', 'Manchester', 'Al Hilal',
+                'PSG', 'Inter Miami', 'Flamengo', 'Bayern', 'Borussia', 'Monterrey', 'Real Madrid', 'Juventus']
+        return ['Flamengo', 'Bayern']
 
 
 if __name__ == "__main__":

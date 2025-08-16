@@ -45,10 +45,13 @@ class Effect:
                 game.actual_game.club_b.plus_time_def(timedelta(seconds=self.value))
         if 'Impedimento' in self.description:
             game.actual_game.round_result.goal = False
+            game.actual_game.round_result.null_goal = True
         if 'Falta de Ataque' in self.description:
             game.actual_game.round_result.goal = False
+            game.actual_game.round_result.null_goal = True
         if 'Gol de Mão' in self.description:
             game.actual_game.round_result.goal = False
+            game.actual_game.round_result.null_goal = True
 
 
 class TableResult:
@@ -139,6 +142,7 @@ class Wheel:
     def table_results(self, club_a: Club, club_b: Club):
         club_results, tatisky_results = self.get_table_type()
         next_club = 0
+        self.table = []
         for club_result in club_results:
             if next_club:
                 actual_club = club_b
@@ -156,21 +160,24 @@ class Wheel:
         if self.table_type == 'coins':
             club = [Effect('+ 5% de Gol', 5, 'club_a'), Effect('+ 5% de Gol', 5, 'club_b'),
                     Effect('+ 10% de Gol', 10, 'club_a'), Effect('+ 10% de Gol', 10, 'club_b'),
-                    Effect('+ 15% de Gol', 15, 'club_a'), Effect('+ 15% de Gol', 15, 'club_b')]
+                    Effect('+ 15% de Gol', 15, 'club_a'), Effect('+ 15% de Gol', 15, 'club_b'),
+                    ]
             tatisky = [Effect('+1 Min Skin Pro', 1), Effect('+1 Min Skin Pro', 1),
                        Effect('+2 Min Skin Pro', 2), Effect('+2 Min Skin Pro', 2),
                        Effect('+3 Min Skin Pro', 3), Effect('+4 Min Skin Pro', 4)]
         elif self.table_type == 'shares':
             club = [Effect('+ 15% de VAR', 15, 'club_a'), Effect('+ 15% de VAR', 15, 'club_b'),
                     Effect('+ 20% de VAR', 20, 'club_a'), Effect('+ 20% de VAR', 20, 'club_b'),
-                    Effect('+ 25% de VAR', 25, 'club_a'), Effect('+ 25% de VAR', 25, 'club_b')]
+                    Effect('+ 25% de VAR', 25, 'club_a'), Effect('+ 25% de VAR', 25, 'club_b'),
+                    ]
             tatisky = [Effect('Carinho', 0), Effect('Troca a Skin', 0), Effect('Fica de Pé', 0),
                        Effect( 'Dança Gatinha', 0), Effect('Mostra o Look', 0), Effect('Dança na Cadeira', 0)]
         else:
             club = [Effect('+ 5 Seg ATK', 5, 'club_a'), Effect('+ 5 Seg ATK', 5, 'club_b'),
                     Effect('+ 5 Seg DEF', 5, 'club_a'), Effect('+ 5 Seg DEF', 5, 'club_b'),
                     Effect('+ 10 Seg ATK', 10, 'club_a'), Effect('+ 10 Seg ATK', 10, 'club_b'),
-                    Effect('+ 10 Seg DEF', 10, 'club_a'), Effect('+ 10 Seg DEF', 10, 'club_b')]
+                    Effect('+ 10 Seg DEF', 10, 'club_a'), Effect('+ 10 Seg DEF', 10, 'club_b')
+                    ]
             tatisky = [Effect('Manda um Beijo', 0), Effect('Faz um Brinde', 0),
                        Effect('Desfila', 0), Effect('Faz Pose', 0)]
 
@@ -249,7 +256,6 @@ class Like(Wheel, Bar):
                 self.xp_points = self.like_amount * 10
                 self.spin_wheel()
             self.next_extract += timedelta(seconds=10)
-        # self.get_new_level()
         self.draw_bar(game)
 
     def force_extract(self, game):
@@ -260,8 +266,6 @@ class Like(Wheel, Bar):
         self.like_amount = actual_like_count
         self.xp_points = self.like_amount * 10
         self.spin_wheel()
-        # self.next_extract += timedelta(seconds=10)
-        # self.is_possible_extract = True
         return plus_like
 
     def validate_extract(self):
@@ -275,10 +279,9 @@ class Like(Wheel, Bar):
 class Gift(Wheel, Bar):
     def __init__(self):
         super().__init__()
-        self.start_bar('coins', 150, (0, 5), (70, 18), 0.1)
+        self.start_bar('coins', 100, (0, 5), (70, 18), 0.1)
         self.start_wheel('coins')
         self.next_extract = datetime.now()
-        self.sub_extractor = Extractor('subs')
         self.sub_name_extractor = Extractor('name')
 
     def update(self, game):
@@ -338,7 +341,7 @@ class Gift(Wheel, Bar):
 class Share(Wheel, Bar):
     def __init__(self):
         super().__init__()
-        self.start_bar('shares', 300, (5, 130), (70, 140), 0.05)
+        self.start_bar('shares', 50, (5, 130), (70, 140), 0.05)
         self.start_wheel('shares')
         self.next_extract = datetime.now()
 
@@ -346,7 +349,7 @@ class Share(Wheel, Bar):
         self.table_results(game.actual_game.club_a, game.actual_game.club_b)
         if self.next_extract <= datetime.now():
             actual_like_count = self.extract.get_value()
-            game.like_left_to_show += actual_like_count - self.like_amount
+            game.sharing_left_to_show += actual_like_count - self.like_amount
             self.like_to_show += actual_like_count - self.like_amount
             self.like_amount = actual_like_count
             self.xp_points = self.like_amount * 10
@@ -468,6 +471,9 @@ class RoundResult:
         self.goal = goal
         self.var = var
         self.get_goal = False
+        self.get_defense = False
+        self.get_update = False
+        self.null_goal = False
 
 
 # class TimeCountdown:
@@ -527,6 +533,22 @@ class Game:
         self.game_time = timedelta(seconds=0)
         self.period_countdown = 0
         self.period_time = datetime.now()
+        self.is_finish = False
+        self.period_time_max = 2700
+        self.is_penalty = False
+        self.is_start = True
+        self.start_game_time = datetime.now()
+        self.start_game_countdown = 5
+        self.end_game_time = datetime.now()
+        self.end_game_countdown = 5
+
+    def get_winner(self):
+        if self.club_a.goal > self.club_b.goal:
+            return self.club_a
+        return self.club_b
+
+    def is_tie_status(self):
+        return self.club_a.goal == self.club_b.goal
 
     def start_round(self):
         if self.actual_club_atk:
@@ -542,6 +564,39 @@ class Game:
         self.start_countdown = 3
         self.is_starting = datetime.now()
         self.start_atk_phase()
+
+    def start_game(self, game):
+        if datetime.now() - self.start_game_time >= timedelta(milliseconds=1000):
+            self.start_game_countdown -= 1
+            self.start_game_time = datetime.now()
+
+        if self.start_game_countdown <= 0:
+            self.is_start = False
+
+        phase_text = game.font_phase.render(self.stage.capitalize(), True, (255, 255, 255))
+        vs_text = game.font_title.render('VS', True, (255, 255, 255))
+        stage_text = game.font_phase.render('Primeiro Tempo', True, (255, 255, 255))
+
+        clubs_board = Surface((300, 100), SRCALPHA).convert_alpha()
+        clubs_board.blit(self.club_a.escudo_phase, (0, 0))
+        clubs_board.blit(vs_text, (100 + (100/2) - vs_text.get_width()/2,
+                                   clubs_board.get_height()/2 - vs_text.get_height()/2))
+        clubs_board.blit(self.club_b.escudo_phase, (200, 0))
+
+        info_board_surface = Surface((stage_text.get_width() + 20, 300), SRCALPHA).convert_alpha()
+        info_board_surface.fill((0, 0, 0, 100))
+
+        position_phase_text = (WIDTH / 2 - phase_text.get_width() / 2, 360)
+        position_clubs_board = (WIDTH / 2 - clubs_board.get_width() / 2, 455)
+        position_stage_text = (WIDTH / 2 - stage_text.get_width() / 2, 580)
+
+        position_info_board = (WIDTH / 2 - info_board_surface.get_width() / 2, 353)
+
+        game.gradient_rect(info_board_surface, position_info_board)
+
+        game.screen.blit(phase_text, position_phase_text)
+        game.screen.blit(clubs_board, position_clubs_board)
+        game.screen.blit(stage_text, position_stage_text)
 
     def start_atk_phase(self):
         self.phase_countdown = self.actual_club_atk.time_atk.seconds
@@ -559,48 +614,53 @@ class Game:
         return True if self.phase_game == 0 else False
 
     def update(self, game):
-        if not self.period_countdown:
-            if not self.round_result:
-                if not self.is_compute:
-                    if not self.is_start_round:
-                        self.start_round()
-                        game.like_engine.update_extract_status(False)
-                        game.like_engine.force_extract(game)
-                    elif self.start_countdown <= 0:
-                        if self.is_phase_atk():
-                            if self.phase_countdown > 0:
-                                self.update_phase_countdown(game)
-                            else:
-                                self.actual_club_atk.crowd_scream = game.like_engine.force_extract(game)
-                                self.start_def_phase()
+        if not self.is_start:
+            if not self.is_finish:
+                if not self.period_countdown:
+                    if not self.round_result:
+                        if not self.is_compute:
+                            if not self.is_start_round:
+                                self.start_round()
+                                game.like_engine.update_extract_status(False)
+                                game.like_engine.force_extract(game)
+                            elif self.start_countdown <= 0:
+                                if self.is_phase_atk():
+                                    if self.phase_countdown > 0:
+                                        self.update_phase_countdown(game)
+                                    else:
+                                        self.actual_club_atk.crowd_scream = game.like_engine.force_extract(game)
+                                        self.start_def_phase()
 
-                        if not self.is_phase_atk():
-                            if self.phase_countdown > 0:
-                                self.update_phase_countdown(game)
+                                if not self.is_phase_atk():
+                                    if self.phase_countdown > 0:
+                                        self.update_phase_countdown(game)
+                                    else:
+                                        self.actual_club_def.crowd_scream = game.like_engine.force_extract(game)
+                                        self.is_compute = True
+                                        game.like_engine.update_extract_status(True)
                             else:
-                                self.change_game_time()
-                                self.actual_club_def.crowd_scream = game.like_engine.force_extract(game)
-                                self.is_compute = True
-                                game.like_engine.update_extract_status(True)
-
-                    else:
-                        self.update_countdown(game)
-                elif not self.round_result:
-                    self.compute_round()
+                                self.update_countdown(game)
+                        elif not self.round_result:
+                            if self.period_time_max < 2700:
+                                self.tie_solve_temp()
+                            else:
+                                self.compute_round()
+                else:
+                    self.update_game_break(game)
+                self.draw_score_board(game)
         else:
-            self.update_game_break(game)
-        self.draw_score_board(game)
+            self.start_game(game)
 
     def change_game_time(self):
         self.game_time += timedelta(seconds=450)
-        if self.game_time.seconds == 2700:
+        if self.game_time.seconds == self.period_time_max:
             self.change_period()
             self.game_time = timedelta(seconds=0)
             self.game_break()
             return
 
     def game_break(self):
-        self.period_countdown = 3
+        self.period_countdown = 5
         self.period_time = datetime.now()
 
     def change_period(self):
@@ -611,7 +671,15 @@ class Game:
         return
 
     def end_game(self):
-        pass
+        if not self.is_tie_status():
+            self.is_finish = True
+            self.print_result()
+        elif self.period_time_max == 2700:
+            self.period_time_max = 900
+            self.period = 1
+        else:
+            self.is_penalty = True
+            self.club_a.goal = self.club_b.goal = 0
 
     def get_time_string(self):
         minute = self.game_time.seconds // 60
@@ -628,22 +696,31 @@ class Game:
 
     def draw_score_board(self, game):
         game.screen.blit(game.graphics.scoreboard, (WIDTH/2-game.graphics.scoreboard.get_width()/2, 77))
-        period = game.font_title.render(f'{self.period}T', True, (255, 255, 255))
+        period = game.font_title.render(f'{self.period}{"T" if self.period_time_max >= 2700 else "P" }',
+                                        True, (255, 255, 255))
         game_time = game.font_title.render(f'{self.get_time_string()}', True, (0, 0, 0))
         game.screen.blit(period, (906, 78))
         game.screen.blit(game_time, (972, 78))
 
         game.screen.blit(self.club_a.escudo_scoreboard, (584, 108))
-        club_a_name = game.font_club_name.render(f'{self.club_a.club_name}', True, (0, 0, 0))
-        game.screen.blit(club_a_name, (840 - 196/2 - club_a_name.get_width()/2, 125))
+        club_a_name = game.font_club_name.render(f'{self.adjust_name(self.club_a.club_name)}', True, (0, 0, 0))
+        game.screen.blit(club_a_name, (850 - 196/2 - club_a_name.get_width()/2, 125))
 
         game.screen.blit(self.club_b.escudo_scoreboard, (1330, 108))
-        club_b_name = game.font_club_name.render(f'{self.club_b.club_name}', True, (0, 0, 0))
-        game.screen.blit(club_b_name, (1130 + 196/2 - club_b_name.get_width()/2, 125))
+        club_b_name = game.font_club_name.render(f'{self.adjust_name(self.club_b.club_name)}', True, (0, 0, 0))
+        game.screen.blit(club_b_name, (1110 + 196/2 - club_b_name.get_width()/2, 125))
 
         score = game.font_counter.render(f'{self.club_a.goal}-{self.club_b.goal}', True, (255, 255, 255))
 
         game.screen.blit(score, (940, 110))
+
+        if self.is_penalty:
+            pass
+
+    def adjust_name(self, club_name):
+        if len(club_name) >= 13:
+            return club_name[:5]
+        return club_name
 
     def compute_round(self):
         crowd_goal_chance = self.get_crowd_goal_chance_value()
@@ -651,33 +728,55 @@ class Game:
         var_goal = random.random()
         goal = False
         var = False
-        if shot_goal <= crowd_goal_chance + self.actual_club_atk.goal_chance:
+        penalty_mod = 0
+        if self.is_penalty:
+            penalty_mod = 0.1
+        if shot_goal <= crowd_goal_chance + self.actual_club_atk.get_goal_chance() + penalty_mod:
             goal = True
-            if var_goal <= self.get_var_chance(crowd_goal_chance + self.actual_club_atk.goal_chance):
+            if var_goal <= self.get_var_chance(crowd_goal_chance + self.actual_club_atk.get_goal_chance()) and \
+                    not self.is_penalty:
                 var = True
+
         self.round_result = RoundResult(goal, var)
         self.end_round()
+
+    def tie_solve_temp(self):
+        if self.period == 2 and self.game_time.seconds == 450 and self.is_tie_status():
+            self.round_result = RoundResult(True, False)
+            self.end_round()
+        elif self.period == 2 and self.game_time.seconds == 450 and not self.is_tie_status():
+            self.round_result = RoundResult(False, False)
+            self.end_round()
+        else:
+            self.compute_round()
 
     def end_round(self):
         self.is_compute = False
         self.is_start_round = False
 
     def get_var_chance(self, goal_chance):
-        if goal_chance >= 0.7:
+        if goal_chance >= 0.4:
             return self.actual_club_def.var_chance + 0.2
         return self.actual_club_def.var_chance
 
     def get_crowd_goal_chance_value(self):
+        crowd_mod = 0
+        if self.actual_club_atk.crowd_scream > 150:
+            crowd_mod = 0.04
+        if self.actual_club_atk.crowd_scream > 650:
+            crowd_mod = 0.08
+        if self.actual_club_atk.crowd_scream > 1000:
+            crowd_mod = 0.12
         if self.actual_club_atk.crowd_scream:
-            crowd_atk = self.actual_club_atk.crowd_scream / self.actual_club_atk.crowd_scream + self.actual_club_def.crowd_scream
+            crowd_atk = self.actual_club_atk.crowd_scream / (self.actual_club_atk.crowd_scream + self.actual_club_def.crowd_scream)
             if crowd_atk < 0.2:
-                return 0.10
-            if 0.2 <= crowd_atk < 0.4:
-                return 0.20
-            if 0.4 <= crowd_atk <= 0.7:
-                return 0.25
+                return 0.07 + crowd_mod
+            if 0.2 <= crowd_atk < 0.5:
+                return 0.10 + crowd_mod
+            if 0.5 <= crowd_atk <= 0.7:
+                return 0.13 + crowd_mod
             if crowd_atk > 0.7:
-                return 0.35
+                return 0.18 + crowd_mod
         return 0.0
 
     def change_clubs(self):
@@ -704,9 +803,9 @@ class Game:
         club_text = game.font_title.render(f'{actual_club.club_name} iniciará {phase} em:', True, (255, 255, 255))
         info_board_surface = Surface((text_countdown.get_width() + 100, 120), SRCALPHA).convert_alpha()
         info_board_surface.fill((255, 0, 0, 100))
-        position_countdown = (WIDTH/2 - text_countdown.get_width()/2, 405)
-        position_info_board = (WIDTH/2 - info_board_surface.get_width()/2, 353)
-        position_club_text = (WIDTH/2 - club_text.get_width()/2, 358)
+        position_countdown = (WIDTH/2 - text_countdown.get_width()/2, 232)
+        position_info_board = (WIDTH/2 - info_board_surface.get_width()/2, 180)
+        position_club_text = (WIDTH/2 - club_text.get_width()/2, 185)
         game.gradient_rect(info_board_surface, position_info_board)
         game.screen.blit(club_text, position_club_text)
         game.screen.blit(text_countdown, position_countdown)
@@ -725,25 +824,78 @@ class Game:
             phase = 'Defesa do'
             actual_club = self.actual_club_def
 
-        club_text = game.font_title.render(f'{phase} {actual_club.club_name}', True, (255, 255, 255))
-        position_countdown = (WIDTH/2 - text_countdown.get_width()/2, 205)
-        position_club_text = (WIDTH/2 - club_text.get_width()/2, 158)
+        club_text = game.font_counter.render(f'{phase} {actual_club.club_name}', True, (255, 255, 0))
+        position_countdown = (WIDTH/2 - text_countdown.get_width()/2, 267)
+        position_club_text = (WIDTH/2 - club_text.get_width()/2, 180)
         game.screen.blit(club_text, position_club_text)
         game.screen.blit(text_countdown, position_countdown)
+
+    def update_end_game(self, game):
+        if datetime.now() - self.end_game_time >= timedelta(milliseconds=1000):
+            self.end_game_countdown -= 1
+            self.end_game_time = datetime.now()
+
+        string_stage = "Final de Jogo"
+        stage_text = game.font_phase.render(string_stage, True, (255, 255, 255))
+        vs_text = game.font_counter.render(f'{self.club_a.goal}-{self.club_b.goal}', True, (255, 255, 255))
+
+        clubs_board = Surface((400, 100), SRCALPHA).convert_alpha()
+        clubs_board.blit(self.club_a.escudo_phase, (0, 0))
+        clubs_board.blit(vs_text, (100 + (200 / 2) - vs_text.get_width() / 2,
+                                   clubs_board.get_height() / 2 - vs_text.get_height() / 2))
+        clubs_board.blit(self.club_b.escudo_phase, (300, 0))
+
+        info_board_surface = Surface((stage_text.get_width() + 100, 200), SRCALPHA).convert_alpha()
+        info_board_surface.fill((255, 0, 0, 100))
+
+        position_stage_text = (WIDTH / 2 - stage_text.get_width() / 2, 360)
+        position_clubs_board = (WIDTH / 2 - clubs_board.get_width() / 2, 455)
+
+        position_info_board = (WIDTH / 2 - info_board_surface.get_width() / 2, 353)
+
+        game.gradient_rect(info_board_surface, position_info_board)
+
+        game.screen.blit(clubs_board, position_clubs_board)
+        game.screen.blit(stage_text, position_stage_text)
 
     def update_game_break(self, game):
         if datetime.now() - self.period_time >= timedelta(milliseconds=1000):
             self.period_countdown -= 1
             self.period_time = datetime.now()
 
-        period_text = game.font_counter.render('Segundo Tempo', True, (255, 255, 255))
+        string_stage = self.get_string_stage()
+        stage_text = game.font_phase.render(string_stage, True, (255, 255, 255))
+        vs_text = game.font_counter.render(f'{self.club_a.goal}-{self.club_b.goal}', True, (255, 255, 255))
 
-        info_board_surface = Surface((period_text.get_width() + 100, 100), SRCALPHA).convert_alpha()
+        clubs_board = Surface((400, 100), SRCALPHA).convert_alpha()
+        clubs_board.blit(self.club_a.escudo_phase, (0, 0))
+        clubs_board.blit(vs_text, (100 + (200 / 2) - vs_text.get_width() / 2,
+                                   clubs_board.get_height() / 2 - vs_text.get_height() / 2))
+        clubs_board.blit(self.club_b.escudo_phase, (300, 0))
+
+        info_board_surface = Surface((stage_text.get_width() + 100, 200), SRCALPHA).convert_alpha()
         info_board_surface.fill((255, 0, 0, 100))
+
+        position_stage_text = (WIDTH / 2 - stage_text.get_width() / 2, 360)
+        position_clubs_board = (WIDTH / 2 - clubs_board.get_width() / 2, 455)
+
         position_info_board = (WIDTH / 2 - info_board_surface.get_width() / 2, 353)
-        position_period_text = (WIDTH / 2 - period_text.get_width() / 2, 358)
+
         game.gradient_rect(info_board_surface, position_info_board)
-        game.screen.blit(period_text, position_period_text)
+
+        game.screen.blit(clubs_board, position_clubs_board)
+        game.screen.blit(stage_text, position_stage_text)
+
+    def print_result(self):
+        print(f'Jogo Finalizado: {self.club_a.club_name} {self.club_a.goal} x {self.club_b.goal} {self.club_b.club_name}')
+
+    def get_string_stage(self):
+        if self.period_time_max >= 2700:
+            return 'Segundo Tempo'
+        else:
+            if self.period == 1:
+                return '1º Tempo da Prorrogação '
+            return '2º Tempo da Prorrogação '
 
 
 class Championship:
@@ -754,10 +906,11 @@ class Championship:
                       'semi': [],
                       'final': []}
         self.mount_games(club_list)
-        self.champion = ''
+        self.champion: Club = None
+        self.club_victory = []
 
     def mount_games(self, club_list):
-        shuffle(club_list)
+        # shuffle(club_list)
         while club_list:
             club_a = club_list.pop()
             club_b = club_list.pop()
@@ -780,6 +933,41 @@ class Championship:
 
     def insert_new_game(self, stage, club_a, club_b):
         self.games[stage].append((club_a, club_b))
+
+    def append_club_victory(self, club: Club, next_phase):
+        if next_phase:
+            club.restart()
+            self.club_victory.append(club)
+            if len(self.club_victory) == 2:
+                self.games[next_phase].append(tuple(self.club_victory))
+                self.club_victory = []
+        else:
+            self.champion = club
+
+
+class GamesIcon:
+
+    def __init__(self, icon_image):
+        self.image = icon_image
+        self.position_y = 20
+        self.position_x = 1313
+        self.is_valid = True
+
+    def update(self, game):
+        game.screen.blit(self.image, (self.position_x, self.position_y))
+        self.actualize_position()
+        self.validate_sharing()
+
+    def actualize_position(self):
+        self.position_x -= 5
+
+    def validate_sharing(self):
+        if self.position_x <= 265:
+            self.is_valid = False
+
+
+class PreviewGamesBoard:
+    pass
 
 
 if __name__ == '__main__':

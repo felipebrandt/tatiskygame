@@ -1,5 +1,5 @@
 from pygame import image, transform
-from image_utils import resize
+from image_utils import resize, fixed_resize_width
 from datetime import datetime, timedelta
 
 
@@ -10,17 +10,25 @@ DEF = 15
 class Club:
     def __init__(self, name: str):
         self.club_name = name
-        self.escudo = resize(image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(), 0.35)
-        self.escudo_icon = resize(image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(), 0.1)
-        self.escudo_scoreboard = resize(image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(),
-                                        0.13)
+        self.escudo = fixed_resize_width(
+            image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(), 315)
+        self.escudo_phase = fixed_resize_width(
+            image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(), 100)
+        self.escudo_icon = fixed_resize_width(
+            image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(), 50)
+        self.escudo_scoreboard = fixed_resize_width(
+            image.load(f"assets/times/{name.replace(' ', '').lower()}.png").convert_alpha(), 65)
         self.crowd_scream = 0
         self.goal = 0
-        self.var_chance = 0.05
+        self.var_chance = 0.15
         self.goal_chance = 0.1
+        self.goal_chance_mod = 0.0
         self.time_atk = timedelta(seconds=ATK)
         self.time_def = timedelta(seconds=DEF)
         self.end_act = None
+
+    def get_goal_chance(self):
+        return self.goal_chance + self.goal_chance_mod
 
     def plus_time_atk(self, time):
         if self.time_atk + time <= timedelta(seconds=50):
@@ -36,6 +44,7 @@ class Club:
 
     def plus_goal(self):
         self.goal += 1
+        self.goal_chance_mod = 0.0
         self.goal_chance = 0.1
 
     def plus_var_chance(self, var_chance):
@@ -45,15 +54,17 @@ class Club:
             self.var_chance = 0.5
 
     def plus_goal_chance(self, goal_chance):
-        if self.goal_chance + goal_chance <= 0.3:
-            self.goal_chance += goal_chance
+        if self.goal_chance_mod + goal_chance <= 0.3:
+            self.goal_chance_mod += goal_chance
         else:
-            self.goal_chance = 0.3
+            self.goal_chance_mod = 0.3
 
     def restart(self):
+        self.crowd_scream = 0
         self.goal = 0
-        self.var_chance = 0.05
+        self.var_chance = 0.15
         self.goal_chance = 0.1
+        self.goal_chance_mod = 0.0
         self.time_atk = timedelta(seconds=ATK)
         self.time_def = timedelta(seconds=DEF)
         self.end_act = None
@@ -64,7 +75,25 @@ class Goalkeeper:
     def __init__(self):
         self.idle = image.load('assets/times/goleiro_idle.png').convert_alpha()
         self.def_right = image.load('assets/times/goleiro.png').convert_alpha()
-        self.def_left = transform.flip(self.def_right, False, True)
+        self.def_left = image.load('assets/times/goleiro_left.png').convert_alpha()
+        self.actual_image = self.idle
+        self.index_position = 0
+        self.position = [(900, 566), (925, 510), (718, 510)]
+
+    def get_right_def(self):
+        self.actual_image = self.def_right
+        self.index_position = 1
+
+    def get_left_def(self):
+        self.actual_image = self.def_left
+        self.index_position = 2
+
+    def get_idle(self):
+        self.actual_image = self.idle
+        self.index_position = 0
+
+    def update(self, game):
+        game.screen.blit(self.actual_image, self.position[self.index_position])
 
 
 class LoadFiles:
@@ -94,6 +123,9 @@ class LoadFiles:
         self.scoreboard = resize(image.load('assets/times/placar.png').convert_alpha(), 1.3)
         self.var_board = image.load('assets/times/var.png').convert_alpha()
         self.goal = image.load('assets/times/goal.png').convert_alpha()
+        self.defense = image.load('assets/defendeu.png').convert_alpha()
+        self.null_goal = image.load('assets/anulado.png').convert_alpha()
+        self.champion = image.load('assets/campeao.png').convert_alpha()
         self.goalkeeper = Goalkeeper()
         self.club_dict = {}
         self.club_list = []

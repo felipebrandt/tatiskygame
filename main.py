@@ -1,5 +1,6 @@
 import pygame
-import random
+from random import *
+import threading
 import math
 from pygame import image
 from image_utils import *
@@ -37,11 +38,13 @@ class TatiskyGame:
         self.font_game_time = pygame.font.SysFont('Montserrat Heavy', 35, False)
         self.font_title = pygame.font.SysFont('Montserrat Heavy', 55, False)
         self.font_club_name = pygame.font.SysFont('Montserrat Heavy', 55, False)
+        self.font_phase = pygame.font.SysFont('Montserrat Heavy', 80, False)
         self.font_counter = pygame.font.SysFont('Montserrat Heavy', 100, False)
         self.championship_extractor = ChampionshipExtractor()
         self.graphics = LoadFiles(self.championship_extractor.get_value())
         self.championship = Championship(self.graphics.club_list)
         self.actual_game = self.championship.get_next_game()
+        self.last_game = None
         self.countdown = 0
         self.countdown_timer = datetime.now()
         self.zoom_countdown = 1
@@ -75,10 +78,20 @@ class TatiskyGame:
         self.is_start_cron = False
         self.start_key_1 = False
         self.start_key_2 = False
+        self.start_key_3 = False
+        self.pause_game = True
+
         mixer.init()
         self.wheel_sound = pygame.mixer.Sound('assets/click.mp3')
         self.end_time_song = pygame.mixer.Sound('assets/ding.mp3')
         self.sub_song = pygame.mixer.Sound('assets/sub.mp3')
+
+        self.crowd_sound = pygame.mixer.Sound('assets/torcida.mp3')
+        self.goal_sound = pygame.mixer.Sound('assets/gol.mp3')
+        self.var_sound = pygame.mixer.Sound('assets/var.mp3')
+        self.defense_sound = pygame.mixer.Sound('assets/defesa.mp3')
+        self.null_goal_sound = pygame.mixer.Sound('assets/vaia.mp3')
+
         self.actual_sector = 0
         self.start_game = False
         self.subscriber_name_to_draw = None
@@ -92,6 +105,14 @@ class TatiskyGame:
         self.like_rank = Ranking('liker')
         self.gift_rank = Ranking('gifter')
         self.game_result = None
+        self.ball_side = 'idle'
+        self.ball_position = {'right': (755, 537),
+                              'left': (1176, 537),
+                              'idle': (962, 943)}
+
+        self.spinning_var = False
+        # self.champion_countdown -=
+        # self.champion_countdown_timer = datetime.now()
 
     def get_time_string(self):
         minute = self.transparent_time.seconds // 60
@@ -236,12 +257,16 @@ class TatiskyGame:
             else:
                 self.running = True
 
+        self.crowd_sound.set_volume(0.4)
+        self.crowd_sound.play(loops=-1)
         while self.running:
             self.screen.blit(self.graphics.background, (0, 0))
             self.screen.blit(self.graphics.table, (1628, 267))
-            self.like_engine.update(self)
-            self.gift_engine.update(self)
-            self.share_engine.update(self)
+            if not self.pause_game:
+                if self.actual_game:
+                    self.like_engine.update(self)
+                    self.gift_engine.update(self)
+                    self.share_engine.update(self)
             self.draw_last_result_board()
             # self.draw_qr_code()
             if self.transparent_time and self.is_start_cron:
@@ -253,10 +278,14 @@ class TatiskyGame:
             if self.next_spin:
                 self.mount_table()
                 self.draw_roulette()
-            self.draw_spin()
+            if self.spinning:
+                # threading.Thread(target=self.draw_spin, daemon=True).start()
+                self.draw_spin()
+
             self.get_next_spin()
-            self.update()
             self.draw_podium()
+            self.update()
+
             pygame.display.flip()
             if self.to_finish_angle:
                 self.smooth_stop()
@@ -268,15 +297,22 @@ class TatiskyGame:
                         self.start_key_1 = True
                     if event.key == pygame.K_t:
                         self.start_key_2 = True
+                    if event.key == pygame.K_p:
+                        self.start_key_3 = True
 
                     if self.start_key_1 and self.start_key_2:
                         self.is_start_cron = not self.is_start_cron
+
+                    if self.start_key_1 and self.start_key_3:
+                        self.pause_game = not self.pause_game
 
                 elif event.type == pygame.KEYUP:
                     if event.key == pygame.K_SPACE:
                         self.start_key_1 = False
                     if event.key == pygame.K_t:
                         self.start_key_2 = False
+                    if event.key == pygame.K_p:
+                        self.start_key_3 = False
 
             if datetime.now() - self.result_countdown >= timedelta(milliseconds=5000):
                 if self.next_spin:
@@ -296,15 +332,20 @@ class TatiskyGame:
                         self.zoom_countdown = 1
                         self.spinning = True
                         self.result = None
-
-
             self.clock.tick(30)
-
         pygame.quit()
 
     def update(self):
         self.like_rank.update()
         self.gift_rank.update()
+
+        # if len(self.heart_list) < 20:
+        #     threading.Thread(target=self.get_new_hearts, daemon=True).start()
+        # if len(self.coins_list) < 10:
+        #     threading.Thread(target=self.get_new_coins, daemon=True).start()
+        # if len(self.sharing_list) < 15:
+        #     threading.Thread(target=self.get_new_sharing, daemon=True).start()
+
         self.get_new_hearts()
         self.get_new_coins()
         self.get_new_sharing()
@@ -314,45 +355,84 @@ class TatiskyGame:
             coin.update(self)
         for sharing in self.sharing_list:
             sharing.update(self)
+
         self.validate_all_hearts()
         self.validate_all_coins()
         self.validate_all_sharing()
-        self.actual_game.update(self)
-        if self.actual_game.round_result:
-            self.update_game_result()
-        if self.game_result:
-            self.show_result_countdown()
+
+        self.graphics.goalkeeper.update(self)
+        self.screen.blit(self.graphics.ball, self.ball_position[self.ball_side])
+
+        if not self.pause_game:
+            if self.actual_game:
+                if self.actual_game.is_finish:
+                    self.actual_game.update_end_game(self)
+                    if self.actual_game.end_game_countdown <= 0:
+                        self.championship.append_club_victory(self.actual_game.get_winner(), self.actual_game.game_next_stage)
+                        self.actual_game = self.championship.get_next_game()
+
+            if self.actual_game:
+                self.actual_game.update(self)
+                if self.actual_game.round_result:
+                    self.update_game_result()
+            else:
+                self.show_champion()
+            if self.game_result:
+                self.show_result_countdown()
 
     def update_game_result(self):
+        self.update_ball_goal()
         if self.next_spin.__class__.__name__ == 'Var' and self.spinning:
             pass
         else:
             if not self.actual_game.round_result.goal:
                 self.defense_result()
-                self.actual_game.round_result = None
+                # self.actual_game.round_result = None
+                # self.graphics.goalkeeper.get_idle()
             else:
                 if self.actual_game.round_result.var:
                     self.var_result()
+                    self.spinning_var = True
                 else:
-                    if not self.game_result:
-                        self.goal_result()
+                    if self.actual_game.round_result:
+                        if self.actual_game.round_result.goal and not self.actual_game.round_result.var and not self.spinning_var:
+                            self.goal_result()
+
+    def update_ball_goal(self):
+        if not self.actual_game.round_result.get_update:
+            self.actual_game.round_result.get_update = True
+            self.ball_side = choice(['right', 'left'])
+        if self.ball_side == 'right' and self.actual_game.round_result.goal:
+            self.graphics.goalkeeper.get_right_def()
+        elif self.ball_side == 'right' and not self.actual_game.round_result.goal:
+            self.graphics.goalkeeper.get_left_def()
+        elif self.ball_side == 'left' and self.actual_game.round_result.goal:
+            self.graphics.goalkeeper.get_left_def()
+        elif self.ball_side == 'left' and not self.actual_game.round_result.goal:
+            self.graphics.goalkeeper.get_right_def()
 
     def defense_result(self):
-        if self.actual_game.round_result.var:
-            #gol anulado
-            pass
-        else:
-            #defesa
-            pass
+        if not self.actual_game.round_result.get_defense:
+            self.actual_game.round_result.get_defense = True
+            if self.actual_game.round_result.null_goal:
+                self.null_goal_sound.play()
+                self.game_result = ResultCountdown(5, self.graphics.null_goal, (801, 323))
+                self.actual_game.actual_club_atk.goal_chance += 0.05
+            else:
+                self.defense_sound.play()
+                self.game_result = ResultCountdown(5, self.graphics.defense, (801, 323))
+                self.actual_game.actual_club_atk.goal_chance += 0.05
 
     def goal_result(self):
         if not self.actual_game.round_result.get_goal:
+            self.goal_sound.play()
             self.actual_game.actual_club_atk.plus_goal()
-            self.game_result = ResultCountdown(5, self.graphics.goal, (801, 323))
+            self.game_result = ResultCountdown(10, self.graphics.goal, (801, 323))
             self.actual_game.round_result.get_goal = True
 
     def var_result(self):
         if not self.spinning:
+            self.var_sound.play()
             self.var_engine.spin_wheel()
             self.actual_game.round_result.var = False
         self.game_result = ResultCountdown(5, self.graphics.var_board, (829, 721))
@@ -362,11 +442,21 @@ class TatiskyGame:
             self.game_result.game_result_countdown -= 1
             self.game_result.game_result_time = datetime.now()
 
+        if self.actual_game.round_result.get_goal:
+            self.screen.blit(self.actual_game.actual_club_atk.escudo_phase,
+                             (WIDTH/2 - self.actual_game.actual_club_atk.escudo_phase.get_width()/2, 230))
+
         position_result = self.game_result.result_position
         self.screen.blit(self.game_result.result_graphic, position_result)
         if self.game_result.game_result_countdown <= 0:
             self.game_result = None
+            self.graphics.goalkeeper.get_idle()
+            self.ball_side = 'idle'
             if self.actual_game.round_result.goal and self.actual_game.round_result.get_goal:
+                self.actual_game.change_game_time()
+                self.actual_game.round_result = None
+            elif self.actual_game.round_result.get_defense:
+                self.actual_game.change_game_time()
                 self.actual_game.round_result = None
 
     def validate_all_hearts(self):
@@ -409,7 +499,7 @@ class TatiskyGame:
             self.coins_left_to_show -= 1
 
     def get_new_sharing(self):
-        while len(self.sharing_list) < 15 and self.like_left_to_show:
+        while len(self.sharing_list) < 15 and self.sharing_left_to_show:
             new_sharing = Sharing(self.graphics.sharing_image, random.choice([randint(20, 120), randint(576, 680)]),
                                   randint(964, 1300))
             self.sharing_list.append(new_sharing)
@@ -453,35 +543,35 @@ class TatiskyGame:
         # self.screen.blit(cost_surface, (WIDTH/2, HEIGHT/2))
 
     def draw_spin(self):
-        if self.spinning:
-            if self.countdown:
-                self.countdown_spin()
-            else:
-                current_sector = int(self.current_angle % 360 // self.angle_step)
-                if current_sector != self.actual_sector:
-                    self.wheel_sound.play()
-                    self.actual_sector = current_sector
-                self.current_angle += self.speed
-                self.speed *= 0.98  # Reduz a velocidade gradativamente
-                if self.speed < 0.1:
-                    self.spinning = False
-                    self.speed = 0
-                    self.regular_last_angle = self.current_angle % 360 // 1
-                    self.to_finish_angle = (self.current_angle % 360 // self.angle_step) * 30 + 15
-                    self.current_angle = self.regular_last_angle
-                    if self.current_angle > self.to_finish_angle:
-                        self.correction = -1
-                    else:
-                        self.correction = 1
-                    self.result = int(self.current_angle % 360 // self.angle_step)
-                    if len(self.last_result_list) == 4:
-                        self.last_result_list.pop(0)
-                    self.last_result_list.append((self.next_spin.table_type, self.actual_table_values[self.result]))
-                    with open('spin.csv', 'w') as file:
-                        file.write(f'{self.gift_engine.all_spinning};{self.like_engine.all_spinning};{self.share_engine.all_spinning}')
-                    self.result_countdown = datetime.now()
-                    self.verify_result(self.actual_table_values[self.result])
-                    self.next_spin.is_spin = True
+        if self.countdown:
+            self.countdown_spin()
+        else:
+            current_sector = int(self.current_angle % 360 // self.angle_step)
+            if current_sector != self.actual_sector:
+                self.wheel_sound.play()
+                self.actual_sector = current_sector
+            self.current_angle += self.speed
+            self.speed *= 0.98  # Reduz a velocidade gradativamente
+            if self.speed < 0.1:
+                self.spinning = False
+                self.spinning_var = False
+                self.speed = 0
+                self.regular_last_angle = self.current_angle % 360 // 1
+                self.to_finish_angle = (self.current_angle % 360 // self.angle_step) * 30 + 15
+                self.current_angle = self.regular_last_angle
+                if self.current_angle > self.to_finish_angle:
+                    self.correction = -1
+                else:
+                    self.correction = 1
+                self.result = int(self.current_angle % 360 // self.angle_step)
+                if len(self.last_result_list) == 4:
+                    self.last_result_list.pop(0)
+                self.last_result_list.append((self.next_spin.table_type, self.actual_table_values[self.result]))
+                with open('spin.csv', 'w') as file:
+                    file.write(f'{self.gift_engine.all_spinning};{self.like_engine.all_spinning};{self.share_engine.all_spinning}')
+                self.result_countdown = datetime.now()
+                self.verify_result(self.actual_table_values[self.result])
+                self.next_spin.is_spin = True
 
     def draw_last_result_board(self):
         y = 203
@@ -536,6 +626,18 @@ class TatiskyGame:
 
     def draw_qr_code(self):
         self.screen.blit(self.graphics.qrcode, (22, 462))
+
+    def show_champion(self):
+        #
+        # if datetime.now() - self.champion_countdown_timer >= timedelta(milliseconds=1000):
+        #     self.champion_countdown -= 1
+        #     self.champion_countdown_timer = datetime.now()
+
+        position_club_shield = (770, 200)
+        position_champion = (0, 0)
+
+        self.screen.blit(self.graphics.champion, position_champion)
+        self.screen.blit(self.championship.champion.escudo, position_club_shield)
 
 
 if __name__ == '__main__':
