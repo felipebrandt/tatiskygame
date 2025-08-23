@@ -12,6 +12,9 @@ WHITE = (255, 255, 255)
 YELLOW = (255, 255, 0)
 ROXO = (40, 0, 80, 120)
 ROSA = (80, 0, 90, 120)
+AZUL = (50, 50, 200, 120)
+VERDE = (50, 200, 50, 120)
+ROSA_CLARO = (100, 45, 65, 120)
 RED = (255,0,0)
 SMOOTH_VALUE = 0.2
 SECTORS = 12
@@ -36,7 +39,7 @@ class TatiskyGame:
         self.angle_step = 360 / SECTORS
         self.roleta_center = (WIDTH // 2, HEIGHT // 2)
         self.radius = 200
-        self.background = image.load('assets/palcobackground.png').convert_alpha()
+        self.background = image.load('assets/img.png').convert_alpha()
         self.qrcode = image.load('assets/qr_code.png').convert_alpha()
         self.result_board = image.load('assets/board_last_result.png').convert_alpha()
         self.cron_board = image.load('assets/cron.png').convert_alpha()
@@ -105,10 +108,11 @@ class TatiskyGame:
 
     def mount_table(self):
         self.actual_table_values = self.next_spin.table
-        y = 310
+        y = 195
         next_position = 0
         for value in self.actual_table_values:
-
+            if next_position == 12:
+                break
             if self.result is not None and next_position == self.result:
                 cost_surface = self.font_info.render(value,
                                                      True,
@@ -123,17 +127,17 @@ class TatiskyGame:
             next_position += 1
 
     def draw_podium(self):
-        self.gradient_rect_podium(self.podium_image, (320, 920))
-        name_position_list = [(446, 841), (368, 865), (524, 876)]
-        points_position_list = [(420, 800), (320, 800), (500, 800)]
-        image_position_list = [(418, 870), (335, 890), (501, 902)]
-        self.screen.blit(self.podium_image, (320, 920))
+        self.gradient_rect_podium(self.podium_image, (320-88, 920))
+        name_position_list = [(446-88, 841), (368-88, 865), (524-88, 876)]
+        points_position_list = [(420-88, 800), (320-88, 800), (500-88, 800)]
+        image_position_list = [(418-88, 870), (335-88, 890), (501-88, 902)]
+        self.screen.blit(self.podium_image, (320-88, 920))
         zip_to_blit = zip(self.like_rank.rank_list, name_position_list, points_position_list, image_position_list)
         for rank_user, name_position, point_position, image_position in zip_to_blit:
             self.screen.blit(rank_user.name, (name_position[0] - rank_user.name.get_width()/2,name_position[1]))
             self.screen.blit(rank_user.points, point_position)
             self.screen.blit(rank_user.image, image_position)
-        self.screen.blit(self.sup_line_top_liker, (320, 730))
+        self.screen.blit(self.sup_line_top_liker, (320-88, 730))
 
         self.gradient_rect_podium(self.podium_image, (1377, 920))
         name_position_list = [(446+1057, 841), (368+1057, 865), (524+1057, 876)]
@@ -149,16 +153,16 @@ class TatiskyGame:
 
     def gradient_rect_podium(self, target_rect, position):
         colour_rect = pygame.Surface((2, 2)).convert_alpha()
-        pygame.draw.line(colour_rect, ROXO, (0, 0), (0, 1))  # left colour line
-        pygame.draw.line(colour_rect, ROSA, (1, 0), (1, 1))  # right colour line
+        pygame.draw.line(colour_rect, AZUL, (0, 0), (0, 1))  # left colour line
+        pygame.draw.line(colour_rect, VERDE, (1, 0), (1, 1))  # right colour line
         colour_rect = pygame.transform.smoothscale(colour_rect, (target_rect.get_width(), target_rect.get_height()+160))
         self.screen.blit(colour_rect, (position[0], position[1]-160))
 
     def draw_roulette(self):
         rotated_wheel = pygame.transform.rotate(self.next_spin.image_wheel, self.current_angle)
         wheel_rect = rotated_wheel.get_rect(center=self.background.get_rect().center)
-        self.screen.blit(rotated_wheel, (wheel_rect[0],wheel_rect[1] + 150))
-        self.screen.blit(self.border_wheel, (752, 445))
+        self.screen.blit(rotated_wheel, (wheel_rect[0]-88,wheel_rect[1] + 150))
+        self.screen.blit(self.border_wheel, (664, 445))
         if self.subscriber_name_to_draw:
             self.draw_subscriber_name()
 
@@ -167,8 +171,8 @@ class TatiskyGame:
         cost_surface = font.render(f'Roleta do {self.subscriber_name_to_draw}', True, WHITE)
         info_board_surface = pygame.Surface((cost_surface.get_width() + 100, 100), pygame.SRCALPHA).convert_alpha()
         info_board_surface.fill((255,0,0,100))
-        position_sub_name = (WIDTH/2 - cost_surface.get_width()/2, 920)
-        position_info_board = (WIDTH / 2 - info_board_surface.get_width() / 2, 920 - cost_surface.get_height()/2)
+        position_sub_name = ((WIDTH/2 - cost_surface.get_width()/2) - 88, 920)
+        position_info_board = ((WIDTH / 2 - info_board_surface.get_width() / 2) - 88, 920 - cost_surface.get_height()/2)
         position_sup_line = (WIDTH / 2 - self.sup_line.get_width()/2, position_info_board[Y_POSITION] - 30)
         position_bottom_line = (WIDTH / 2 - self.bottom_line.get_width()/2, position_info_board[Y_POSITION] + 80)
         self.gradient_rect(info_board_surface, position_info_board)
@@ -229,11 +233,11 @@ class TatiskyGame:
 
         while self.running:
             self.screen.blit(self.background, (0, 0))
-            self.screen.blit(self.table, (1662, 267))
+            self.screen.blit(self.table, (1662, 152))
             self.like_engine.update(self)
             self.gift_engine.update(self)
             self.draw_last_result_board()
-            self.draw_qr_code()
+            # self.draw_qr_code()
             if self.transparent_time and self.is_start_cron:
                 self.transparent_time_count()
             else:
@@ -323,7 +327,7 @@ class TatiskyGame:
 
     def get_new_hearts(self):
         while len(self.heart_list) < 50 and self.like_left_to_show:
-            new_heart = Heart(self.heart_image, randint(300, 750), randint(964, 1300))
+            new_heart = Heart(self.heart_image, randint(210, 660), randint(964, 1300))
             self.heart_list.append(new_heart)
             self.like_left_to_show -= 1
 
@@ -352,10 +356,10 @@ class TatiskyGame:
 
         info_board_surface = pygame.Surface((text_countdown.get_width() + 100, 100), pygame.SRCALPHA).convert_alpha()
         info_board_surface.fill((255, 0, 0, 100))
-        position_countdown = (WIDTH / 2 - text_countdown.get_width() / 2, 305)
-        position_info_board = (WIDTH / 2 - info_board_surface.get_width() / 2, 320 - text_countdown.get_height() / 2)
-        position_sup_line = (WIDTH / 2 - self.sup_line_spin.get_width() / 2, position_info_board[Y_POSITION] - 30)
-        position_bottom_line = (WIDTH / 2 - self.bottom_line.get_width() / 2, position_info_board[Y_POSITION] + 80)
+        position_countdown = ((WIDTH / 2 - text_countdown.get_width() / 2), 50)
+        position_info_board = ((WIDTH / 2 - info_board_surface.get_width() / 2) - 12, (320 - text_countdown.get_height() / 2) - 262)
+        position_sup_line = ((WIDTH / 2 - self.sup_line_spin.get_width() / 2), position_info_board[Y_POSITION] - 30)
+        position_bottom_line = ((WIDTH / 2 - self.bottom_line.get_width() / 2), position_info_board[Y_POSITION] + 80)
         self.gradient_rect(info_board_surface, position_info_board)
         self.screen.blit(self.sup_line_spin, position_sup_line)
         self.screen.blit(self.bottom_line, position_bottom_line)
@@ -393,10 +397,10 @@ class TatiskyGame:
                     self.verify_result(self.actual_table_values[self.result])
 
     def draw_last_result_board(self):
-        y = 212
+        y = 338
         next_position = 0
-        self.screen.blit(self.result_board, (809, 11))
-        x = 825
+        self.screen.blit(self.result_board, (712, 137))
+        x = 728
         for type_value, value in reversed(self.last_result_list):
             if type_value == 'coins':
                 self.screen.blit(self.gift_image, (x, y - (61 * next_position)))
@@ -409,14 +413,14 @@ class TatiskyGame:
             self.screen.blit(cost_surface, position_cost_text)
             next_position += 1
 
-        self.screen.blit(self.cron_board, (1272, 104))
+        self.screen.blit(self.cron_board, (1743, 45))
         self.get_time_string()
         if self.is_start_cron:
             cost_surface = self.font_info.render(self.transparent_time_string, True, WHITE)
         else:
             cost_surface = self.font_info.render(self.transparent_time_string, True, RED)
         cost_surface = resize(cost_surface, 3)
-        position_cost_text = (1280, 115)
+        position_cost_text = (1751, 56)
         self.screen.blit(cost_surface, position_cost_text)
 
     def transparent_time_count(self):

@@ -235,6 +235,7 @@ class Gift(Wheel, Bar):
             self.like_amount = actual_like_count
             self.xp_points = self.like_amount * 10
             self.get_sub_name_(game)
+            self.get_sub_name(game)
             self.spin_wheel()
             self.next_extract += timedelta(seconds=10)
         self.get_new_level()

@@ -66,11 +66,14 @@ class Extractor:
             return None
 
 
+MAX_STRING = 6
+
+
 class RankedUser:
 
     def __init__(self, name, points, base64_image):
-        self.name = self.string_to_pygame_image(name.split(' ')[0], (255, 255, 255), 50)
-        self.points = self.string_to_pygame_image(points, (255, 60, 60), 40)
+        self.name = self.string_to_pygame_image(self.truncate_string(name.split(' ')[0]), (255, 255, 255), 50)
+        self.points = self.string_to_pygame_image(points, (230, 180, 240), 40)
         self.image = self.base64_to_pygame_image(base64_image)
 
     @staticmethod
@@ -82,6 +85,12 @@ class RankedUser:
         font_used = font.SysFont('Montserrat Heavy', 25, False)
         string_surface = font_used.render(string_value, True, color)
         return fixed_resize_height(fixed_resize_width(string_surface, size), int(size/2))
+
+    @staticmethod
+    def truncate_string(string):
+        if len(string) > MAX_STRING:
+            return string[:MAX_STRING]
+        return string
 
 
 class Ranking:
