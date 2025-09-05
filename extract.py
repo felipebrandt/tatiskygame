@@ -47,7 +47,7 @@ class Extractor:
             return int(
                 self.driver.find_elements(By.CSS_SELECTOR, 'body > div > div > div.background.textContainer > div')[
                     0].text.replace(self.to_replace_tuple[0], '').replace(self.to_replace_tuple[1], '').split(' / ')[
-                    0].replace('.', ''))
+                    1].replace('.', ''))
         except Exception as e:
             return 0
 
@@ -66,19 +66,19 @@ class Extractor:
             return None
 
 
-MAX_STRING = 6
+MAX_STRING = 7
 
 
 class RankedUser:
 
     def __init__(self, name, points, base64_image):
-        self.name = self.string_to_pygame_image(self.truncate_string(name.split(' ')[0]), (255, 255, 255), 50)
-        self.points = self.string_to_pygame_image(points, (230, 180, 240), 40)
+        self.name = self.string_to_pygame_image(self.truncate_string(name.split(' ')[0]), (255, 255, 255), 70)
+        self.points = self.string_to_pygame_image(points, (230, 180, 240), 90)
         self.image = self.base64_to_pygame_image(base64_image)
 
     @staticmethod
     def base64_to_pygame_image(base64_image):
-        return fixed_resize_width(image.load(BytesIO(base64_image)), 50)
+        return fixed_resize_width(image.load(BytesIO(base64_image)), 90)
 
     @staticmethod
     def string_to_pygame_image(string_value, color, size):

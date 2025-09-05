@@ -26,7 +26,7 @@ class TatiskyGame:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Roleta")
+        pygame.display.set_caption("Roletrando Tatisky")
         self.clock = pygame.time.Clock()
         self.font_info = pygame.font.SysFont('Montserrat Heavy', 25, False)
         self.font_counter = pygame.font.SysFont('Montserrat Heavy', 100, False)
@@ -45,16 +45,18 @@ class TatiskyGame:
         self.cron_board = image.load('assets/cron.png').convert_alpha()
         self.heart_image = image.load('assets/heart.png').convert_alpha()
         self.coins_image = image.load('assets/coins_gift.png').convert_alpha()
-        self.podium_image = image.load('assets/podio.png').convert_alpha()
+        self.podium_image = resize(image.load('assets/podio.png').convert_alpha(), 1.8)
         self.like_engine = Like()
         self.gift_engine = Gift()
+        self.sub_engine = Subscribe()
         self.last_result_list = []
         # Criar setores com números
         self.current_angle = 0
         self.speed = 0
         self.spinning = False
         self.gift_image = resize(image.load('assets/coins.png').convert_alpha(), 0.08)
-        self.like_image = resize(image.load('assets/likes.png').convert_alpha(), 0.12)
+        self.like_image = resize(image.load('assets/likes.png').convert_alpha(), 0.15)
+        self.sub_image = resize(image.load('assets/sub.png').convert_alpha(), 0.15)
         self.center_wheel = None
         self.border_wheel = image.load('assets/borda.png').convert_alpha()
         self.flanelinha = image.load('assets/flanelinha.png').convert_alpha()
@@ -62,8 +64,8 @@ class TatiskyGame:
         self.sup_line = image.load('assets/sup_line.png').convert_alpha()
         self.sup_line_spin = image.load('assets/sup_line_spin.png').convert_alpha()
         self.bottom_line = image.load('assets/botton_line.png').convert_alpha()
-        self.sup_line_top_liker = image.load('assets/sup_line_top_liker.png').convert_alpha()
-        self.sup_line_top_gifter = image.load('assets/sup_line_top_gifter.png').convert_alpha()
+        self.sup_line_top_liker = resize(image.load('assets/sup_line_top_liker.png').convert_alpha(), 1.8)
+        self.sup_line_top_gifter = resize(image.load('assets/sup_line_top_gifter.png').convert_alpha(), 1.8)
         self.regular_last_angle = None
         self.to_finish_angle = None
         self.running = False
@@ -127,29 +129,26 @@ class TatiskyGame:
             next_position += 1
 
     def draw_podium(self):
-        self.gradient_rect_podium(self.podium_image, (320-88, 920))
-        name_position_list = [(446-88, 841), (368-88, 865), (524-88, 876)]
-        points_position_list = [(420-88, 800), (320-88, 800), (500-88, 800)]
-        image_position_list = [(418-88, 870), (335-88, 890), (501-88, 902)]
-        self.screen.blit(self.podium_image, (320-88, 920))
+        self.gradient_rect_podium(self.podium_image, (41, 694))
+        name_position_list = [(265, 622), (118, 652), (405, 684)]
+        points_position_list = [(265, 572), (118, 602), (405, 632)]
+        image_position_list = [(220, 675), (73, 700), (365, 735)]
+        self.screen.blit(self.podium_image, (320-88-191, 920-156))
         zip_to_blit = zip(self.like_rank.rank_list, name_position_list, points_position_list, image_position_list)
         for rank_user, name_position, point_position, image_position in zip_to_blit:
-            self.screen.blit(rank_user.name, (name_position[0] - rank_user.name.get_width()/2,name_position[1]))
-            self.screen.blit(rank_user.points, point_position)
+            self.screen.blit(rank_user.name, (name_position[0] - rank_user.name.get_width()/2, name_position[1]))
+            self.screen.blit(rank_user.points, (point_position[0] - rank_user.points.get_width()/2, point_position[1]))
             self.screen.blit(rank_user.image, image_position)
-        self.screen.blit(self.sup_line_top_liker, (320-88, 730))
+        self.screen.blit(self.sup_line_top_liker, (320-88-191, 490))
 
-        self.gradient_rect_podium(self.podium_image, (1377, 920))
-        name_position_list = [(446+1057, 841), (368+1057, 865), (524+1057, 876)]
-        points_position_list = [(420+1057, 800), (320+1057, 800), (500+1057, 800)]
-        image_position_list = [(418+1057, 870), (335+1057, 890), (501+1057, 902)]
-        self.screen.blit(self.podium_image, (1377, 920))
+        self.gradient_rect_podium(self.podium_image, (1145, 694))
+        self.screen.blit(self.podium_image, (1377-232, 920-156))
         zip_to_blit = zip(self.gift_rank.rank_list, name_position_list, points_position_list, image_position_list)
         for rank_user, name_position, point_position, image_position in zip_to_blit:
-            self.screen.blit(rank_user.name, (name_position[0] - rank_user.name.get_width() / 2, name_position[1]))
-            self.screen.blit(rank_user.points, point_position)
-            self.screen.blit(rank_user.image, image_position)
-        self.screen.blit(self.sup_line_top_gifter, (1377, 730))
+            self.screen.blit(rank_user.name, ((name_position[0] - rank_user.name.get_width() / 2) + 1104, name_position[1]))
+            self.screen.blit(rank_user.points, ((point_position[0] - rank_user.points.get_width()/2) + 1104, point_position[1]))
+            self.screen.blit(rank_user.image, (image_position[0] + 1104, image_position[1]))
+        self.screen.blit(self.sup_line_top_gifter, (1377-232, 490))
 
     def gradient_rect_podium(self, target_rect, position):
         colour_rect = pygame.Surface((2, 2)).convert_alpha()
@@ -221,8 +220,10 @@ class TatiskyGame:
                         self.start_game = True
         self.like_engine.update(self)
         self.gift_engine.update(self)
+        self.sub_engine.update(self)
         self.gift_engine.start_spin()
         self.like_engine.start_spin()
+        self.sub_engine.start_spin()
         while not self.running:
             if not self.like_engine.validate_extract():
                 start_tki = self.font_info.render('Inicie o TKI', True, RED)
@@ -236,6 +237,7 @@ class TatiskyGame:
             self.screen.blit(self.table, (1662, 152))
             self.like_engine.update(self)
             self.gift_engine.update(self)
+            self.sub_engine.update(self)
             self.draw_last_result_board()
             # self.draw_qr_code()
             if self.transparent_time and self.is_start_cron:
@@ -275,6 +277,7 @@ class TatiskyGame:
             if datetime.now() - self.result_countdown >= timedelta(milliseconds=5000):
                 if self.next_spin:
                     if self.next_spin.spin and not self.spinning:
+                        self.next_spin.table_results(self.get_last_result_list())
                         self.next_spin.spin -= 1
                         if self.next_spin.subscriber_name_list:
                             self.subscriber_name_to_draw = self.next_spin.subscriber_name_list.pop()
@@ -339,10 +342,25 @@ class TatiskyGame:
 
     def get_next_spin(self):
         if self.next_spin is None:
-            if self.gift_engine.spin:
-                self.next_spin = self.gift_engine
+            if self.sub_engine.spin:
+                self.next_spin = self.sub_engine
+            # elif self.gift_engine.spin:
+            #     self.next_spin = self.gift_engine
             elif self.like_engine.spin:
                 self.next_spin = self.like_engine
+
+    def get_last_result_list(self):
+        gift_result = None
+        like_result = None
+        sub_result = None
+        for result_type, result in self.last_result_list:
+            if result_type == 'like':
+                like_result = result
+            elif result_type == 'coin':
+                gift_result = result
+            else:
+                sub_result = result
+        return [gift_result, like_result, sub_result]
 
     def countdown_spin(self):
         if datetime.now() - self.countdown_timer <= timedelta(milliseconds=1500):
@@ -399,11 +417,13 @@ class TatiskyGame:
     def draw_last_result_board(self):
         y = 338
         next_position = 0
-        self.screen.blit(self.result_board, (712, 137))
+        self.screen.blit(self.result_board, (0, 0))
         x = 728
         for type_value, value in reversed(self.last_result_list):
             if type_value == 'coins':
                 self.screen.blit(self.gift_image, (x, y - (61 * next_position)))
+            elif type_value == 'subscribe':
+                self.screen.blit(self.sub_image, (x, y - (61 * next_position)))
             else:
                 self.screen.blit(self.like_image, (x, y - (61 * next_position)))
 

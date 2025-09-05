@@ -3,9 +3,52 @@ from image_utils import resize
 from pygame import image, draw, Color, Rect
 from pygame.sprite import Sprite
 from datetime import datetime
-from random import randint
+from random import randint, shuffle
 from models import Webhook
 import json
+from imap import get_privacy_sell
+
+
+class Effect:
+
+    def __init__(self, description, value, club=None):
+        self.description = description
+        self.value = value
+        self.club = club
+
+    def apply_effect(self, game):
+        if 'de Gol' in self.description:
+            if self.club == 'club_a':
+                game.actual_game.club_a.plus_goal_chance(self.value/100)
+            if self.club == 'club_b':
+                game.actual_game.club_b.plus_goal_chance(self.value/100)
+        if 'Skin Pro' in self.description:
+            game.transparent_time += timedelta(minutes=self.value)
+        if 'de VAR' in self.description:
+            if self.club == 'club_a':
+                game.actual_game.club_a.plus_var_chance(self.value/100)
+            if self.club == 'club_b':
+                game.actual_game.club_b.plus_var_chance(self.value/100)
+        if 'Seg ATK' in self.description:
+            if self.club == 'club_a':
+                game.actual_game.club_a.plus_time_atk(timedelta(seconds=self.value))
+            if self.club == 'club_b':
+                game.actual_game.club_b.plus_time_atk(timedelta(seconds=self.value))
+        if 'Seg DEF' in self.description:
+            if self.club == 'club_a':
+                game.actual_game.club_a.plus_time_def(timedelta(seconds=self.value))
+            if self.club == 'club_b':
+                game.actual_game.club_b.plus_time_def(timedelta(seconds=self.value))
+        if 'Impedimento' in self.description:
+            game.actual_game.round_result.goal = False
+            game.actual_game.round_result.null_goal = True
+        if 'Falta de Ataque' in self.description:
+            game.actual_game.round_result.goal = False
+            game.actual_game.round_result.null_goal = True
+        if 'Gol de Mão' in self.description:
+            game.actual_game.round_result.goal = False
+            game.actual_game.round_result.null_goal = True
+
 
 class Wheel:
     def __init__(self):
@@ -51,78 +94,130 @@ class Wheel:
                 self.actual_level += 1
                 self.table_results()
 
-    def table_results(self):
-        light_like_result = ['Mostra o Look', 'Mandar Beijinho', 'Mandar MiniCoração', 'Fazer um Brinde', 'Desenha no Quadro']
-        medium_like_result = ['Rebola na Cadeira', 'Dança na Cadeira', 'Desfilar na Passarela', 'Mostra a Raba', 'Fazer ASMR']
-        hard_like_result = ['Ajeita a Flanelinha', 'Carinho Por Cima', 'Carinho Por Dentro']
+    @staticmethod
+    def remove_last_results(results, table):
+        if results:
+            for result in results:
+                if result in table:
+                    table.remove(result)
+        return table
 
-        light_gift_result = ['Canta Gatinha', 'Mostra a Raba', 'Mostra a Pintinha', 'Fazer Pose', 'Ensinar uma Cantada']
-        medium_gift_result = ['Cantada no Público', 'Pintada na Coxa', 'Sussurrar Gostoso', 'Contar um Segredo']
-        hard_gift_result = ['Rebola na Camera', 'Dança na Camera', 'Agaixadinha na Camera']
+    def table_results(self, result_list=None):
+
+        if self.table_type == 'coins':
+            tatisky = [Effect('+1 Min Skin Pro', 1), Effect('+1 Min Skin Pro', 1),
+                       Effect('+2 Min Skin Pro', 2), Effect('+2 Min Skin Pro', 2),
+                       Effect('+3 Min Skin Pro', 3), Effect('+4 Min Skin Pro', 4)]
+        elif self.table_type == 'shares':
+            tatisky = [Effect('Carinho', 0), Effect('Troca a Skin', 0), Effect('Fica de Pé', 0),
+                       Effect( 'Dança Gatinha', 0), Effect('Mostra o Look', 0), Effect('Dança na Cadeira', 0)]
+        else:
+            tatisky = [Effect('Manda um Beijo', 0), Effect('Faz um Brinde', 0),
+                       Effect('Desfila', 0), Effect('Faz Pose', 0)]
+
+        light_like_result = ['Mostra o Look', 'Mandar Beijinho', 'Mandar MiniCoração', 'Fazer um Brinde', 'Desenha no Quadro', 'Fazer Careta', 'Imita Um Personagem', 'Desafina na Musica', 'Fazer Pose', 'Finge Tocar Instrumento']
+        medium_like_result = ['Rebola na Cadeira', 'Dança na Cadeira', 'Desfilar na Passarela', 'Mostra a Raba', 'Fantasia de Professora', 'Faz Cara de Safada', 'Pintada na Coxa', 'Ensina Professora', 'Conta Segredo']
+        hard_like_result = ['Ajeita a Flanelinha', 'Carinho Por Cima', 'Carinho Por Dentro', 'Carinho Em Volta', 'Contar um Segredo', 'Dança na Camera', 'Mostra a Pintinha', 'Carinho na Coxa']
+
+        light_gift_result = ['Mostra a Raba', 'Fazer Pose', 'Rebola na Cadeira', 'Faz Cara de Safada', 'Carinho Por Cima', 'Pintada na Coxa']
+        medium_gift_result = ['Rebola na Camera', 'Mostra a Pintinha', 'Ajeita a Flanelinha', 'Dança na Camera', 'Carinho na Coxa']
+        hard_gift_result = ['Carinho Por Dentro', 'Molha o Dedinho', 'Agaixadinha na Camera', 'Carinho Em Volta']
+
+        light_like_result = self.remove_last_results(result_list, light_like_result)
+        medium_like_result = self.remove_last_results(result_list, medium_like_result)
+        hard_like_result = self.remove_last_results(result_list, hard_like_result)
+        shuffle(light_gift_result)
+        shuffle(medium_like_result)
+        shuffle(hard_like_result)
+
+        light_gift_result = self.remove_last_results(result_list, light_gift_result)
+        medium_gift_result = self.remove_last_results(result_list, medium_gift_result)
+        hard_gift_result = self.remove_last_results(result_list, hard_gift_result)
+        shuffle(light_like_result)
+        shuffle(medium_gift_result)
+        shuffle(hard_gift_result)
 
         like_table = {1: [7, 3, 2],
-                      2: [6, 4, 2],
-                      3: [5, 4, 2],
-                      4: [4, 4, 3],
-                      5: [3, 4, 3],
-                      6: [2, 6, 3],
-                      7: [0, 7, 3],
-                      8: [0, 6, 3],
-                      9: [0, 5, 3],
-                      10: [0, 4, 3]}
+                      2: [6, 3, 2],
+                      3: [6, 4, 2],
+                      4: [5, 4, 3],
+                      5: [4, 5, 3],
+                      6: [4, 4, 4],
+                      7: [3, 6, 3],
+                      8: [3, 5, 4],
+                      9: [2, 5, 5],
+                      10: [1, 5, 6]}
 
         gift_table = {1: [5, 4, 0],
                       2: [4, 4, 0],
                       3: [3, 3, 1],
                       4: [2, 3, 2],
                       5: [1, 3, 3],
-                      6: [0, 3, 3],
-                      7: [0, 2, 3],
-                      8: [0, 1, 3],
-                      9: [0, 0, 3],
+                      6: [1, 2, 3],
+                      7: [0, 3, 3],
+                      8: [0, 2, 3],
+                      9: [0, 1, 3],
                       10: [0, 0, 3]}
 
-        gift_results = []
-        like_results = []
+        sub_table = {1: [0, 3, 3],
+                      2: [0, 3, 3],
+                      3: [0, 3, 3],
+                      4: [0, 3, 3],
+                      5: [0, 3, 3],
+                      6: [0, 3, 3],
+                      7: [0, 3, 3],
+                      8: [0, 3, 3],
+                      9: [0, 3, 3],
+                      10: [0, 3, 3]}
 
-        low_level = light_like_result + light_like_result
-        for i in range(like_table[self.actual_level][0]):
-            like_results.append(low_level[i])
-        mid_level = medium_like_result + medium_like_result
-        for i in range(like_table[self.actual_level][1]):
-            like_results.append(mid_level[i])
-        high_level = hard_like_result + hard_like_result
-        for i in range(like_table[self.actual_level][2]):
-            like_results.append(high_level[i])
+        low, midi, high = like_table[self.actual_level]
+        low_level = light_like_result[:low]
+        mid_level = medium_like_result[:midi]
+        high_level = hard_like_result[:high]
 
-        low_level = light_like_result + light_like_result
-        for i in range(like_table[self.actual_level][0]):
-            like_results.append(low_level[i])
-        mid_level = medium_like_result + medium_like_result
-        for i in range(like_table[self.actual_level][1]):
-            like_results.append(mid_level[i])
-        high_level = hard_like_result + hard_like_result
-        for i in range(like_table[self.actual_level][2]):
-            like_results.append(high_level[i])
+        like_results = low_level + mid_level + high_level
 
-        type_result = 0
-        for result in gift_table[self.actual_level]:
-            if type_result == 0:
-                low_level = light_gift_result + light_gift_result
-                for i in range(result):
-                    gift_results.append(low_level[i])
-            if type_result == 1:
-                mid_level = medium_gift_result + medium_gift_result
-                for i in range(result):
-                    gift_results.append(mid_level[i])
-            if type_result == 2:
-                high_level = hard_gift_result + hard_gift_result
-                for i in range(result):
-                    gift_results.append(high_level[i])
+        low, midi, high = gift_table[self.actual_level]
+        low_level = light_gift_result[:low]
+        mid_level = medium_gift_result[:midi]
+        high_level = hard_gift_result[:high]
 
-        plus_results = 12 - len(like_results)
-        for time_result in range(plus_results):
-            like_results.append(f'+ 30 Segundos Extras na Próxima')
+        gift_results = low_level + mid_level + high_level
+
+        # low_level = light_like_result + light_like_result
+        # for i in range(like_table[self.actual_level][0]):
+        #     like_results.append(low_level[i])
+        # mid_level = medium_like_result + medium_like_result
+        # for i in range(like_table[self.actual_level][1]):
+        #     like_results.append(mid_level[i])
+        # high_level = hard_like_result + hard_like_result
+        # for i in range(like_table[self.actual_level][2]):
+        #     like_results.append(high_level[i])
+        #
+        # low_level = light_like_result + light_like_result
+        # for i in range(like_table[self.actual_level][0]):
+        #     like_results.append(low_level[i])
+        # mid_level = medium_like_result + medium_like_result
+        # for i in range(like_table[self.actual_level][1]):
+        #     like_results.append(mid_level[i])
+        # high_level = hard_like_result + hard_like_result
+        # for i in range(like_table[self.actual_level][2]):
+        #     like_results.append(high_level[i])
+        #
+        # type_result = 0
+        # for result in gift_table[self.actual_level]:
+        #     if type_result == 0:
+        #         low_level = light_gift_result + light_gift_result
+        #         for i in range(result):
+        #             gift_results.append(low_level[i])
+        #     if type_result == 1:
+        #         mid_level = medium_gift_result + medium_gift_result
+        #         for i in range(result):
+        #             gift_results.append(mid_level[i])
+        #     if type_result == 2:
+        #         high_level = hard_gift_result + hard_gift_result
+        #         for i in range(result):
+        #             gift_results.append(high_level[i])
 
         plus_results = 12 - len(gift_results)
         for time_result in range(plus_results):
@@ -132,7 +227,10 @@ class Wheel:
 
     def start_wheel(self, type_wheel):
         self.table_type = type_wheel
-        self.image_wheel = image.load(f'assets/wheel_{type_wheel}.png').convert_alpha()
+        if type_wheel == 'subscribe':
+            self.image_wheel = image.load(f'assets/wheel_privacy.png').convert_alpha()
+        else:
+            self.image_wheel = image.load(f'assets/wheel_{type_wheel}.png').convert_alpha()
         self.table_results()
         self.get_level_grid()
 
@@ -224,8 +322,8 @@ class Gift(Wheel, Bar):
         self.start_bar('coins', 150, (15, 120), (70, 130))
         self.start_wheel('coins')
         self.next_extract = datetime.now()
-        self.sub_extractor = Extractor('subs')
-        self.sub_name_extractor = Extractor('name')
+        # self.sub_extractor = Extractor('subs')
+        # self.sub_name_extractor = Extractor('name')
 
     def update(self, game):
         if self.next_extract <= datetime.now():
@@ -234,8 +332,8 @@ class Gift(Wheel, Bar):
             self.like_to_show += actual_like_count - self.like_amount
             self.like_amount = actual_like_count
             self.xp_points = self.like_amount * 10
-            self.get_sub_name_(game)
-            self.get_sub_name(game)
+            # self.get_sub_name_(game)
+            # self.get_sub_name(game)
             self.spin_wheel()
             self.next_extract += timedelta(seconds=10)
         self.get_new_level()
@@ -249,14 +347,70 @@ class Gift(Wheel, Bar):
     #         self.sub_amount += 1
     #     self.get_sub_name()
 
-    def get_sub_name(self, game):
+    # def get_sub_name(self, game):
+    #     new_subscriber = self.sub_name_extractor.get_sub_name()
+    #     if new_subscriber and new_subscriber not in game.all_new_subscribers:
+    #         game.all_new_subscribers.append(new_subscriber)
+    #         self.spin += 1
+    #         self.subscriber_name_list.append(new_subscriber)
+    #
+    # def get_sub_name_(self, game):
+    #     webhook_list = Webhook.select().where(Webhook.updated_at.is_null())
+    #     for new_webhook in webhook_list:
+    #         webhook_json = json.loads(new_webhook.raw_data)
+    #         try:
+    #             if webhook_json['resource']['type'] == "subscription" and webhook_json['event'] == "new":
+    #                 new_subscriber = str(new_webhook.webhook_id)
+    #                 game.all_new_subscribers.append(new_subscriber)
+    #                 self.spin += 1
+    #                 self.subscriber_name_list.append(new_subscriber)
+    #             new_webhook.updated_at = datetime.now()
+    #             new_webhook.save()
+    #         except Exception as e:
+    #             new_webhook.updated_at = datetime.now()
+    #             new_webhook.save()
+
+    def validate_extract(self):
+        response = False
+        if self.next_extract <= datetime.now():
+            response = self.extract.is_possible_extract()
+            self.next_extract += timedelta(seconds=10)
+        return response
+
+
+class Subscribe(Wheel):
+    def __init__(self):
+        super().__init__()
+        self.start_wheel('subscribe')
+        self.next_extract = datetime.now()
+        self.next_privvacy_extract = datetime.now()
+        self.sub_extractor = Extractor('subs')
+        self.sub_name_extractor = Extractor('name')
+        self.id_privacy = 1
+        self.actual_level = 4
+
+    def update(self, game):
+        if self.next_privvacy_extract <= datetime.now():
+            self.get_privacy_sub(game)
+            self.id_privacy += 1
+            self.spin_wheel()
+            self.next_privvacy_extract += timedelta(minutes=2)
+
+        if self.next_extract <= datetime.now():
+            self.get_livepix_sub(game)
+            self.get_tiktok_sub(game)
+            self.spin_wheel()
+            self.next_extract += timedelta(seconds=10)
+        self.get_new_level()
+
+    def get_tiktok_sub(self, game):
         new_subscriber = self.sub_name_extractor.get_sub_name()
         if new_subscriber and new_subscriber not in game.all_new_subscribers:
             game.all_new_subscribers.append(new_subscriber)
             self.spin += 1
             self.subscriber_name_list.append(new_subscriber)
 
-    def get_sub_name_(self, game):
+    def get_livepix_sub(self, game):
         webhook_list = Webhook.select().where(Webhook.updated_at.is_null())
         for new_webhook in webhook_list:
             webhook_json = json.loads(new_webhook.raw_data)
@@ -272,16 +426,16 @@ class Gift(Wheel, Bar):
                 new_webhook.updated_at = datetime.now()
                 new_webhook.save()
 
-    def validate_extract(self):
-        response = False
-        if self.next_extract <= datetime.now():
-            response = self.extract.is_possible_extract()
-            self.next_extract += timedelta(seconds=10)
-        return response
+    def get_privacy_sub(self, game):
+        how_many_spins = get_privacy_sell()
+        new_subscriber = 'Superfã PRIVACY ' + str(self.id_privacy)
+        if new_subscriber and new_subscriber not in game.all_new_subscribers:
+            game.all_new_subscribers.append(new_subscriber)
+            self.spin += how_many_spins
+            self.subscriber_name_list.append(new_subscriber)
 
-
-class Subscription(Wheel, Bar):
-    pass
+    def spin_wheel(self):
+        pass
 
 
 class Pix(Bar):
