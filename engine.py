@@ -1,10 +1,9 @@
 from extract import *
-from image_utils import resize
+from image_utils import *
 from pygame import image, draw, Color, Rect
-from pygame.sprite import Sprite
 from datetime import datetime
 from random import randint, shuffle
-from models import Webhook
+from models import Webhook, Dare
 import json
 from imap import get_privacy_sell
 
@@ -65,6 +64,15 @@ class Wheel:
         self.table_type = None
         self.image_wheel = None
         self.subscriber_name_list = list()
+        self.lush_on = False
+
+    def get_table_type_integer(self):
+        if self.table_type == 'likes':
+            return 0
+        if self.table_type == 'coins':
+            return 1
+        if self.table_type == 'subscribe':
+            return 2
 
     def start_spin(self):
         with open('spin.csv') as file:
@@ -92,7 +100,7 @@ class Wheel:
         if self.actual_level < len(self.level_grid):
             if self.xp_points >= self.level_grid[self.actual_level]:
                 self.actual_level += 1
-                self.table_results()
+                self.table_results([])
 
     @staticmethod
     def remove_last_results(results, table):
@@ -102,7 +110,51 @@ class Wheel:
                     table.remove(result)
         return table
 
-    def table_results(self, result_list=None):
+    def get_distribution(self, table_type):
+        if table_type == 0:
+            low = max(0, 8 - self.actual_level)
+            mid = max(1, self.actual_level // 2 + 2)
+            high = 12 - (low + mid)
+        elif table_type == 1:
+            low = max(0, 5 - (self.actual_level - 1))
+            if self.actual_level <= 2:
+                mid = 4
+            elif self.actual_level <= 5:
+                mid = 3
+            elif self.actual_level <= 7:
+                mid = 2
+            elif self.actual_level <= 9:
+                mid = 1
+            else:
+                mid = 0
+
+            high = min(3, (self.actual_level // 3))
+        else:
+            low = 0
+            mid = 3
+            high = 3
+
+        return low, mid, high
+
+    def table_results(self, result_list):
+        integer_table_type = self.get_table_type_integer()
+        all_dare = Dare.get_dare_type(integer_table_type, self.lush_on, result_list)
+        low, mid, high = self.get_distribution(integer_table_type)
+
+        self.table = all_dare['light_dare'][:low] + all_dare['medium_dare'][:mid] + all_dare['hard_dare'][:high]
+
+        if integer_table_type != 0:
+            plus_results = 12 - len(self.table)
+            for time_result in range(plus_results):
+                self.table.append(Dare(
+                                        title=f'+ {int(time_result / 2) + 1} Min Transparente',
+                                        description=f'+ {int(time_result / 2) + 1} Min Transparente',
+                                        level=self.actual_level,
+                                        dare_type=self.get_table_type_integer(),
+                                        value=int(time_result / 2) + 1,
+                                        action=1))
+
+    def table_results_(self, result_list=None):
 
         if self.table_type == 'coins':
             tatisky = [Effect('+1 Min Skin Pro', 1), Effect('+1 Min Skin Pro', 1),
@@ -115,13 +167,31 @@ class Wheel:
             tatisky = [Effect('Manda um Beijo', 0), Effect('Faz um Brinde', 0),
                        Effect('Desfila', 0), Effect('Faz Pose', 0)]
 
-        light_like_result = ['Mostra o Look', 'Mandar Beijinho', 'Mandar MiniCoração', 'Fazer um Brinde', 'Desenha no Quadro', 'Fazer Careta', 'Imita Um Personagem', 'Desafina na Musica', 'Fazer Pose', 'Finge Tocar Instrumento']
-        medium_like_result = ['Rebola na Cadeira', 'Dança na Cadeira', 'Desfilar na Passarela', 'Mostra a Raba', 'Fantasia de Professora', 'Faz Cara de Safada', 'Pintada na Coxa', 'Ensina Professora', 'Conta Segredo']
-        hard_like_result = ['Ajeita a Flanelinha', 'Carinho Por Cima', 'Carinho Por Dentro', 'Carinho Em Volta', 'Contar um Segredo', 'Dança na Camera', 'Mostra a Pintinha', 'Carinho na Coxa']
+        light_like_result = ['Mostra o Look', 'Mandar Beijinho', 'Mandar MiniCoração', 'Desenha no Quadro',
+                             'Fazer Careta', 'Imita Um Personagem', 'Desafina na Musica', 'Fazer Pose',
+                             'Finge Tocar Instrumento']
+        medium_like_result = ['Rebola na Cadeira', 'Dança na Cadeira', 'Desfilar na Passarela', 'Mostra a Raba',
+                              'Fantasia de Professora', 'Faz Cara de Safada', 'Pintada na Coxa', 'Ensina Professora',
+                              'Conta Segredo']
+        hard_like_result = ['Ajeita a Flanelinha', 'Carinho Por Cima', 'Carinho Por Dentro', 'Carinho Em Volta',
+                            'Contar um Segredo', 'Dança na Camera', 'Mostra a Pintinha', 'Carinho na Coxa']
 
-        light_gift_result = ['Mostra a Raba', 'Fazer Pose', 'Rebola na Cadeira', 'Faz Cara de Safada', 'Carinho Por Cima', 'Pintada na Coxa']
-        medium_gift_result = ['Rebola na Camera', 'Mostra a Pintinha', 'Ajeita a Flanelinha', 'Dança na Camera', 'Carinho na Coxa']
+        light_gift_result = ['Mostra a Raba', 'Fazer Pose', 'Rebola na Cadeira', 'Faz Cara de Safada',
+                             'Carinho Por Cima', 'Pintada na Coxa']
+        medium_gift_result = ['Rebola na Camera', 'Mostra a Pintinha', 'Ajeita a Flanelinha', 'Dança na Camera',
+                              'Carinho na Coxa']
         hard_gift_result = ['Carinho Por Dentro', 'Molha o Dedinho', 'Agaixadinha na Camera', 'Carinho Em Volta']
+
+        if self.lush_on:
+            light_like_result += [f'Vibra Fraco por {randint(1, 3)} Seg', f'Vibra Fraco por {randint(1, 3)} Seg']
+            medium_like_result += [f'Vibra Fraco por {randint(2, 4)} Seg', f'Vibra Médio por {randint(1, 3)} Seg']
+            hard_like_result += [f'Vibra Fraco por {randint(3, 5)} Seg', f'Vibra Médio por {randint(2, 4)} Seg']
+
+            light_gift_result += [f'Vibra Médio por {randint(2, 4)} Seg', f'Vibra Forte por {randint(1, 3)} Seg']
+            medium_gift_result += [f'Vibra Fraco por {randint(4, 6)} Seg', f'Vibra Médio por {randint(3, 5)} Seg',
+                                   f'Vibra Forte por {randint(2, 4)} Seg']
+            hard_gift_result += [f'Vibra Fraco por {randint(5, 7)} Seg', f'Vibra Médio por {randint(4, 6)} Seg',
+                                 f'Vibra Forte por {randint(3, 5)} Seg']
 
         light_like_result = self.remove_last_results(result_list, light_like_result)
         medium_like_result = self.remove_last_results(result_list, medium_like_result)
@@ -223,6 +293,10 @@ class Wheel:
         for time_result in range(plus_results):
             gift_results.append(f'+ {int(time_result/2) + 1} Min Transparente')
 
+        # plus_results = 12 - len(like_results)
+        # for time_result in range(plus_results):
+        #     like_results.append(f'+ {int(time_result / 2) + 1} Min Transparente')
+
         self.table = like_results if self.table_type == 'likes' else gift_results
 
     def start_wheel(self, type_wheel):
@@ -231,7 +305,7 @@ class Wheel:
             self.image_wheel = image.load(f'assets/wheel_privacy.png').convert_alpha()
         else:
             self.image_wheel = image.load(f'assets/wheel_{type_wheel}.png').convert_alpha()
-        self.table_results()
+        self.table_results([])
         self.get_level_grid()
 
 
@@ -490,8 +564,77 @@ class Coins:
             self.is_valid = False
 
 
-if __name__ == '__main__':
-    gift = Gift()
-    gift.get_sub_name_()
+class Word:
 
+    def __init__(self, word, map_to_reveal):
+        self.word = word
+        self.revealed = ["_"] * len(self.word)
+        self.next_to_reveal = 0
+        self.map_to_reveal = []
+        self.get_map(map_to_reveal)
+        self.how_many_reveal = len(self.map_to_reveal)
+
+    def reveal_next(self):
+        self.revealed[self.map_to_reveal[self.next_to_reveal]] = self.word[self.map_to_reveal[self.next_to_reveal]]
+        self.next_to_reveal += 1
+
+    def can_reveal(self):
+        return self.next_to_reveal < self.how_many_reveal
+
+    def get_map(self, map_to_reveal):
+        for index in map_to_reveal.split(','):
+            self.map_to_reveal.append(int(index))
+
+
+class WordGame:
+
+    def __init__(self):
+        self.word_list = []
+        self.get_word_list()
+        self.actual_word = None
+        self.font = font.SysFont('Montserrat Heavy', 210, False)
+        self.next_time_reveal = datetime.now()
+        self.show_game = True
+
+    def get_word_list(self):
+        with open('words.txt') as word_file:
+            for raw_word in word_file:
+                word, map_reveal = raw_word.split(';')
+                self.word_list.append(Word(word, map_reveal))
+
+    def reveal(self):
+        self.actual_word.revealed = self.actual_word.word
+
+    def update(self, game):
+        if self.show_game and self.actual_word and not game.next_spin:
+            self.reveal_next_word()
+            width_rect = 190
+            height_rect = 360
+            margin = 30
+            start_x = (game.screen.get_width() - (len(self.actual_word.revealed) * (width_rect + margin) - margin)) // 2
+            start_y = (game.screen.get_height() - height_rect) // 2
+            for index, letter in enumerate(self.actual_word.revealed):
+                x = start_x + index * (width_rect + margin)
+                y = start_y + 60
+
+                draw.rect(game.screen, (255, 255, 255), (x, y, width_rect, height_rect))
+                draw.rect(game.screen, (0, 0, 0), (x, y, width_rect, height_rect), 3)
+
+                if letter:
+                    string_surface = self.font.render(letter.upper(), True, (0, 0, 0))
+                    string_surface = resize_without_proportion(string_surface, 1, 2.2)
+                    game.screen.blit(string_surface, (x + width_rect // 2 - string_surface.get_width() // 2,
+                                                      y + height_rect // 2 - string_surface.get_height() // 2))
+
+    def get_next_word(self):
+        if self.word_list:
+            self.next_time_reveal = datetime.now() + timedelta(seconds=1)
+            self.actual_word = self.word_list.pop()
+        else:
+            self.actual_word = None
+
+    def reveal_next_word(self):
+        if datetime.now() >= self.next_time_reveal and self.actual_word.can_reveal():
+            self.actual_word.reveal_next()
+            self.next_time_reveal = datetime.now() + timedelta(seconds=1)
 

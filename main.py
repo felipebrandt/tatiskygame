@@ -1,10 +1,8 @@
 import pygame
 import random
-import math
-from pygame import image
-from image_utils import *
 from engine import *
 from pygame import mixer
+from lush import *
 
 # Configurações iniciais
 WIDTH, HEIGHT = 1980, 1024
@@ -46,6 +44,7 @@ class TatiskyGame:
         self.heart_image = image.load('assets/heart.png').convert_alpha()
         self.coins_image = image.load('assets/coins_gift.png').convert_alpha()
         self.podium_image = resize(image.load('assets/podio.png').convert_alpha(), 1.8)
+        self.lush_image = image.load('assets/lush.png').convert_alpha()
         self.like_engine = Like()
         self.gift_engine = Gift()
         self.sub_engine = Subscribe()
@@ -59,7 +58,6 @@ class TatiskyGame:
         self.sub_image = resize(image.load('assets/sub.png').convert_alpha(), 0.15)
         self.center_wheel = None
         self.border_wheel = image.load('assets/borda.png').convert_alpha()
-        self.flanelinha = image.load('assets/flanelinha.png').convert_alpha()
         self.table = image.load('assets/tabela.png').convert_alpha()
         self.sup_line = image.load('assets/sup_line.png').convert_alpha()
         self.sup_line_spin = image.load('assets/sup_line_spin.png').convert_alpha()
@@ -80,6 +78,11 @@ class TatiskyGame:
         self.is_start_cron = False
         self.start_key_1 = False
         self.start_key_2 = False
+        self.start_key_3 = False
+        self.start_key_4 = False
+        self.start_key_5 = False
+        self.start_key_6 = False
+        self.start_key_7 = False
         mixer.init()
         self.wheel_sound = pygame.mixer.Sound('assets/click.mp3')
         self.end_time_song = pygame.mixer.Sound('assets/ding.mp3')
@@ -94,6 +97,7 @@ class TatiskyGame:
         self.coins_left_to_show = 0
         self.like_rank = Ranking('liker')
         self.gift_rank = Ranking('gifter')
+        self.word_game = WordGame()
 
     def get_time_string(self):
         minute = self.transparent_time.seconds // 60
@@ -112,15 +116,15 @@ class TatiskyGame:
         self.actual_table_values = self.next_spin.table
         y = 195
         next_position = 0
-        for value in self.actual_table_values:
+        for dare in self.actual_table_values:
             if next_position == 12:
                 break
             if self.result is not None and next_position == self.result:
-                cost_surface = self.font_info.render(value,
+                cost_surface = self.font_info.render(dare.title,
                                                      True,
                                                      YELLOW)
             else:
-                cost_surface = self.font_info.render(value,
+                cost_surface = self.font_info.render(dare.title,
                                                      True,
                                                      WHITE)
 
@@ -253,6 +257,7 @@ class TatiskyGame:
             self.get_next_spin()
             self.update()
             self.draw_podium()
+            self.word_game.update(self)
             pygame.display.flip()
             if self.to_finish_angle:
                 self.smooth_stop()
@@ -264,15 +269,47 @@ class TatiskyGame:
                         self.start_key_1 = True
                     if event.key == pygame.K_t:
                         self.start_key_2 = True
+                    if event.key == pygame.K_1:
+                        self.start_key_3 = True
+                    if event.key == pygame.K_l:
+                        self.start_key_4 = True
+                    if event.key == pygame.K_j:
+                        self.start_key_5 = True
+                    if event.key == pygame.K_s:
+                        self.start_key_6 = True
+
+                    if event.key == pygame.K_r:
+                        self.start_key_7 = True
 
                     if self.start_key_1 and self.start_key_2:
                         self.is_start_cron = not self.is_start_cron
+                    if self.start_key_1 and self.start_key_3:
+                        self.like_engine.spin += 1
+                    if self.start_key_1 and self.start_key_4:
+                        self.change_lush_status()
+                    if self.start_key_1 and self.start_key_5:
+                        self.like_engine.actual_level += 1
+                    if self.start_key_1 and self.start_key_6:
+                        self.word_game.show_game = not self.word_game.show_game
+                    if self.start_key_1 and self.start_key_7:
+                        self.word_game.reveal()
 
                 elif event.type == pygame.KEYUP:
                     if event.key == pygame.K_SPACE:
                         self.start_key_1 = False
                     if event.key == pygame.K_t:
                         self.start_key_2 = False
+                    if event.key == pygame.K_1:
+                        self.start_key_3 = False
+                    if event.key == pygame.K_l:
+                        self.start_key_4 = False
+
+                    if event.key == pygame.K_j:
+                        self.start_key_5 = False
+                    if event.key == pygame.K_s:
+                        self.start_key_6 = False
+                    if event.key == pygame.K_r:
+                        self.start_key_7 = False
 
             if datetime.now() - self.result_countdown >= timedelta(milliseconds=5000):
                 if self.next_spin:
@@ -298,17 +335,26 @@ class TatiskyGame:
 
         pygame.quit()
 
+    def change_lush_status(self):
+        self.gift_engine.lush_on = not self.gift_engine.lush_on
+        self.like_engine.lush_on = not self.like_engine.lush_on
+
     def update(self):
         self.like_rank.update()
         self.gift_rank.update()
         self.get_new_hearts()
         self.get_new_coins()
+        self.lush_update()
         for heart in self.heart_list:
             heart.update(self)
         for coin in self.coins_list:
             coin.update(self)
         self.validate_all_hearts()
         self.validate_all_coins()
+
+    def lush_update(self):
+        if self.gift_engine.lush_on:
+            self.screen.blit(self.lush_image, (1580, 30))
 
     def validate_all_hearts(self):
         remove = False
@@ -344,23 +390,25 @@ class TatiskyGame:
         if self.next_spin is None:
             if self.sub_engine.spin:
                 self.next_spin = self.sub_engine
-            # elif self.gift_engine.spin:
-            #     self.next_spin = self.gift_engine
+            elif self.gift_engine.spin:
+                self.next_spin = self.gift_engine
             elif self.like_engine.spin:
                 self.next_spin = self.like_engine
 
     def get_last_result_list(self):
-        gift_result = None
-        like_result = None
-        sub_result = None
+        result_list = []
         for result_type, result in self.last_result_list:
             if result_type == 'like':
-                like_result = result
+                if result:
+                    result_list.append(result)
             elif result_type == 'coin':
-                gift_result = result
+                if result:
+                    result_list.append(result)
             else:
-                sub_result = result
-        return [gift_result, like_result, sub_result]
+                if result:
+                    result_list.append(result)
+
+        return result_list
 
     def countdown_spin(self):
         if datetime.now() - self.countdown_timer <= timedelta(milliseconds=1500):
@@ -419,7 +467,7 @@ class TatiskyGame:
         next_position = 0
         self.screen.blit(self.result_board, (0, 0))
         x = 728
-        for type_value, value in reversed(self.last_result_list):
+        for type_value, dare in reversed(self.last_result_list):
             if type_value == 'coins':
                 self.screen.blit(self.gift_image, (x, y - (61 * next_position)))
             elif type_value == 'subscribe':
@@ -427,7 +475,7 @@ class TatiskyGame:
             else:
                 self.screen.blit(self.like_image, (x, y - (61 * next_position)))
 
-            cost_surface = self.font_info.render(value, True, YELLOW)
+            cost_surface = self.font_info.render(dare.title, True, YELLOW)
 
             position_cost_text = (x + 55, y - (61 * next_position) + 10)
             self.screen.blit(cost_surface, position_cost_text)
@@ -452,13 +500,13 @@ class TatiskyGame:
         self.actual_transparent_count = datetime.now()
         self.transparent_time += plus_value
 
-    def verify_result(self, result):
+    def verify_result(self, dare: Dare):
         for minutes in range(10):
-            if f'+ {minutes} Min' in result:
-                self.plus_chron(timedelta(seconds=minutes*60) + self.bonus_time_transparent)
-                self.bonus_time_transparent = timedelta(0)
-            if f'+ 30 Segundos Extras na Próxima' in result:
-                self.bonus_time_transparent += timedelta(seconds=30)
+            if f'+ {minutes} Min' in dare.title:
+                self.plus_chron(timedelta(minutes=dare.value))
+        if 'Vibra' in dare.title:
+            action, intense, trash, time_sec, time_trash = dare.title.split(' ')
+            vibrate(int(dare.value), get_intense(intense))
 
     def draw_qr_code(self):
         self.screen.blit(self.qrcode, (22, 462))
