@@ -97,7 +97,7 @@ class TatiskyGame:
         self.coins_left_to_show = 0
         self.like_rank = Ranking('liker')
         self.gift_rank = Ranking('gifter')
-        self.word_game = WordGame()
+        self.word_game = None
 
     def get_time_string(self):
         minute = self.transparent_time.seconds // 60
@@ -257,7 +257,11 @@ class TatiskyGame:
             self.get_next_spin()
             self.update()
             self.draw_podium()
-            self.word_game.update(self)
+            if self.word_game:
+                if self.word_game.actual_word:
+                    self.word_game.update(self)
+                else:
+                    self.word_game = None
             pygame.display.flip()
             if self.to_finish_angle:
                 self.smooth_stop()
@@ -288,7 +292,11 @@ class TatiskyGame:
                     if self.start_key_1 and self.start_key_4:
                         self.change_lush_status()
                     if self.start_key_1 and self.start_key_5:
-                        self.like_engine.actual_level += 1
+                        if self.word_game:
+                            self.word_game.get_next_word()
+                        else:
+                            self.word_game = WordGame()
+                            self.word_game.get_next_word()
                     if self.start_key_1 and self.start_key_6:
                         self.word_game.show_game = not self.word_game.show_game
                     if self.start_key_1 and self.start_key_7:

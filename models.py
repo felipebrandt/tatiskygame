@@ -74,78 +74,91 @@ class Dare(BaseModel):
         return all_dares
 
 
+class WordModel(BaseModel):
+    word = CharField()
+    map_reveal = CharField()
+    is_valid = BooleanField(default=True)
+
+    @staticmethod
+    def get_all_words():
+        all_words = WordModel.select().where(WordModel.is_valid == True)
+        if all_words:
+            return list(all_words)
+        return []
+
+
 if __name__ == '__main__':
-    # db.create_tables([Config])
+    db.create_tables([WordModel])
 
-    dare_list = []
-
-    raw_dare_list = [
-        ('Mostra o Look', 'Mostra o Look', 0, 0, 0, 0),
-        ('Mandar Beijinho', 'Mandar Beijinho', 0, 0, 0, 0),
-        ('Mandar MiniCoração', 'Mandar MiniCoração', 0, 0, 0, 0),
-        ('Desenha no Quadro', 'Desenha no Quadro', 0, 0, 0, 0),
-        ('Fazer Careta', 'Fazer Careta', 0, 0, 0, 0),
-        ('Imita Um Personagem', 'Imita Um Personagem', 0, 0, 0, 0),
-        ('Desafina na Musica', 'Desafina na Musica', 0, 0, 0, 0),
-        ('Fazer Pose', 'Fazer Pose', 0, 0, 0, 0),
-        ('Finge Tocar Instrumento', 'Finge Tocar Instrumento', 0, 0, 0, 0),
-        ('Rebola na Cadeira', 'Rebola na Cadeira', 1, 0, 0, 0),
-        ('Dança na Cadeira', 'Dança na Cadeira', 1, 0, 0, 0),
-        ('Desfilar na Passarela', 'Desfilar na Passarela', 1, 0, 0, 0),
-        ('Mostra a Raba', 'Mostra a Raba', 1, 0, 0, 0),
-        ('Fantasia de Professora', 'Fantasia de Professora', 1, 0, 0, 0),
-        ('Faz Cara de Safada', 'Faz Cara de Safada', 1, 0, 0, 0),
-        ('Pintada na Coxa', 'Pintada na Coxa', 1, 0, 0, 0),
-        ('Ensina Professora', 'Ensina Professora', 1, 0, 0, 0),
-        ('Conta Segredo', 'Conta Segredo', 1, 0, 0, 0),
-        ('Ajeita a Flanelinha', 'Ajeita a Flanelinha', 2, 0, 0, 0),
-        ('Carinho Por Cima', 'Carinho Por Cima', 2, 0, 0, 0),
-        ('Carinho Por Dentro', 'Carinho Por Dentro', 2, 0, 0, 0),
-        ('Carinho Em Volta', 'Carinho Em Volta', 2, 0, 0, 0),
-        ('Contar um Segredo', 'Contar um Segredo', 2, 0, 0, 0),
-        ('Dança na Camera', 'Dança na Camera', 2, 0, 0, 0),
-        ('Mostra a Pintinha', 'Mostra a Pintinha', 2, 0, 0, 0),
-        ('Carinho na Coxa', 'Carinho na Coxa', 2, 0, 0, 0),
-        ('Mostra a Raba', 'Mostra a Raba', 0, 1, 0, 0),
-        ('Fazer Pose', 'Fazer Pose', 0, 1, 0, 0),
-        ('Rebola na Cadeira', 'Rebola na Cadeira', 0, 1, 0, 0),
-        ('Faz Cara de Safada', 'Faz Cara de Safada', 0, 1, 0, 0),
-        ('Carinho Por Cima', 'Carinho Por Cima', 0, 1, 0, 0),
-        ('Pintada na Coxa', 'Pintada na Coxa', 0, 1, 0, 0),
-        ('Rebola na Camera', 'Rebola na Camera', 1, 1, 0, 0),
-        ('Mostra a Pintinha', 'Mostra a Pintinha', 1, 1, 0, 0),
-        ('Ajeita a Flanelinha', 'Ajeita a Flanelinha', 1, 1, 0, 0),
-        ('Dança na Camera', 'Dança na Camera', 1, 1, 0, 0),
-        ('Carinho na Coxa', 'Carinho na Coxa', 1, 1, 0, 0),
-        ('Carinho Por Dentro', 'Carinho Por Dentro', 2, 1, 0, 0),
-        ('Molha o Dedinho', 'Molha o Dedinho', 2, 1, 0, 0),
-        ('Agaixadinha na Camera', 'Agaixadinha na Camera', 2, 1, 0, 0),
-        ('Carinho Em Volta', 'Carinho Em Volta', 2, 1, 0, 0),
-        ('Vibra Fraco por 1 Seg', 'Vibra Fraco por 1 Seg', 0, 0, 1, 2),
-        ('Vibra Fraco por 2 Seg', 'Vibra Fraco por 2 Seg', 0, 0, 2, 2),
-        ('Vibra Fraco por 3 Seg', 'Vibra Fraco por 3 Seg', 1, 0, 3, 2),
-        ('Vibra Medio por 1 Seg', 'Vibra Medio por 1 Seg', 1, 0, 1, 2),
-        ('Vibra Medio por 2 Seg', 'Vibra Medio por 2 Seg', 2, 0, 2, 2),
-        ('Vibra Medio por 3 Seg', 'Vibra Medio por 3 Seg', 2, 0, 3, 2),
-        ('Vibra Medio por 2 Seg', 'Vibra Medio por 2 Seg', 0, 1, 2, 2),
-        ('Vibra Medio por 3 Seg', 'Vibra Medio por 3 Seg', 0, 1, 3, 2),
-        ('Vibra Fraco por 5 Seg', 'Vibra Fraco por 5 Seg', 1, 1, 5, 2),
-        ('Vibra Medio por 4 Seg', 'Vibra Medio por 4 Seg', 1, 1, 4, 2),
-        ('Vibra Medio por 5 Seg', 'Vibra Medio por 5 Seg', 1, 1, 5, 2),
-        ('Vibra Forte por 2 Seg', 'Vibra Forte por 2 Seg', 2, 1, 2, 2),
-        ('Vibra Forte por 3 Seg', 'Vibra Forte por 3 Seg', 2, 1, 3, 2),
-        ('Vibra Forte por 5 Seg', 'Vibra Forte por 5 Seg', 2, 1, 5, 2)
-    ]
-
-    for title, description, level, dare_type, value, action in raw_dare_list:
-        dare_list.append(Dare(
-            title=title,
-            description=description,
-            level=level,
-            dare_type=dare_type,
-            value=value,
-            action=action
-        ))
-
-    with Dare._meta.database.atomic():
-        Dare.bulk_create(dare_list)
+    # dare_list = []
+    #
+    # raw_dare_list = [
+    #     ('Mostra o Look', 'Mostra o Look', 0, 0, 0, 0),
+    #     ('Mandar Beijinho', 'Mandar Beijinho', 0, 0, 0, 0),
+    #     ('Mandar MiniCoração', 'Mandar MiniCoração', 0, 0, 0, 0),
+    #     ('Desenha no Quadro', 'Desenha no Quadro', 0, 0, 0, 0),
+    #     ('Fazer Careta', 'Fazer Careta', 0, 0, 0, 0),
+    #     ('Imita Um Personagem', 'Imita Um Personagem', 0, 0, 0, 0),
+    #     ('Desafina na Musica', 'Desafina na Musica', 0, 0, 0, 0),
+    #     ('Fazer Pose', 'Fazer Pose', 0, 0, 0, 0),
+    #     ('Finge Tocar Instrumento', 'Finge Tocar Instrumento', 0, 0, 0, 0),
+    #     ('Rebola na Cadeira', 'Rebola na Cadeira', 1, 0, 0, 0),
+    #     ('Dança na Cadeira', 'Dança na Cadeira', 1, 0, 0, 0),
+    #     ('Desfilar na Passarela', 'Desfilar na Passarela', 1, 0, 0, 0),
+    #     ('Mostra a Raba', 'Mostra a Raba', 1, 0, 0, 0),
+    #     ('Fantasia de Professora', 'Fantasia de Professora', 1, 0, 0, 0),
+    #     ('Faz Cara de Safada', 'Faz Cara de Safada', 1, 0, 0, 0),
+    #     ('Pintada na Coxa', 'Pintada na Coxa', 1, 0, 0, 0),
+    #     ('Ensina Professora', 'Ensina Professora', 1, 0, 0, 0),
+    #     ('Conta Segredo', 'Conta Segredo', 1, 0, 0, 0),
+    #     ('Ajeita a Flanelinha', 'Ajeita a Flanelinha', 2, 0, 0, 0),
+    #     ('Carinho Por Cima', 'Carinho Por Cima', 2, 0, 0, 0),
+    #     ('Carinho Por Dentro', 'Carinho Por Dentro', 2, 0, 0, 0),
+    #     ('Carinho Em Volta', 'Carinho Em Volta', 2, 0, 0, 0),
+    #     ('Contar um Segredo', 'Contar um Segredo', 2, 0, 0, 0),
+    #     ('Dança na Camera', 'Dança na Camera', 2, 0, 0, 0),
+    #     ('Mostra a Pintinha', 'Mostra a Pintinha', 2, 0, 0, 0),
+    #     ('Carinho na Coxa', 'Carinho na Coxa', 2, 0, 0, 0),
+    #     ('Mostra a Raba', 'Mostra a Raba', 0, 1, 0, 0),
+    #     ('Fazer Pose', 'Fazer Pose', 0, 1, 0, 0),
+    #     ('Rebola na Cadeira', 'Rebola na Cadeira', 0, 1, 0, 0),
+    #     ('Faz Cara de Safada', 'Faz Cara de Safada', 0, 1, 0, 0),
+    #     ('Carinho Por Cima', 'Carinho Por Cima', 0, 1, 0, 0),
+    #     ('Pintada na Coxa', 'Pintada na Coxa', 0, 1, 0, 0),
+    #     ('Rebola na Camera', 'Rebola na Camera', 1, 1, 0, 0),
+    #     ('Mostra a Pintinha', 'Mostra a Pintinha', 1, 1, 0, 0),
+    #     ('Ajeita a Flanelinha', 'Ajeita a Flanelinha', 1, 1, 0, 0),
+    #     ('Dança na Camera', 'Dança na Camera', 1, 1, 0, 0),
+    #     ('Carinho na Coxa', 'Carinho na Coxa', 1, 1, 0, 0),
+    #     ('Carinho Por Dentro', 'Carinho Por Dentro', 2, 1, 0, 0),
+    #     ('Molha o Dedinho', 'Molha o Dedinho', 2, 1, 0, 0),
+    #     ('Agaixadinha na Camera', 'Agaixadinha na Camera', 2, 1, 0, 0),
+    #     ('Carinho Em Volta', 'Carinho Em Volta', 2, 1, 0, 0),
+    #     ('Vibra Fraco por 1 Seg', 'Vibra Fraco por 1 Seg', 0, 0, 1, 2),
+    #     ('Vibra Fraco por 2 Seg', 'Vibra Fraco por 2 Seg', 0, 0, 2, 2),
+    #     ('Vibra Fraco por 3 Seg', 'Vibra Fraco por 3 Seg', 1, 0, 3, 2),
+    #     ('Vibra Medio por 1 Seg', 'Vibra Medio por 1 Seg', 1, 0, 1, 2),
+    #     ('Vibra Medio por 2 Seg', 'Vibra Medio por 2 Seg', 2, 0, 2, 2),
+    #     ('Vibra Medio por 3 Seg', 'Vibra Medio por 3 Seg', 2, 0, 3, 2),
+    #     ('Vibra Medio por 2 Seg', 'Vibra Medio por 2 Seg', 0, 1, 2, 2),
+    #     ('Vibra Medio por 3 Seg', 'Vibra Medio por 3 Seg', 0, 1, 3, 2),
+    #     ('Vibra Fraco por 5 Seg', 'Vibra Fraco por 5 Seg', 1, 1, 5, 2),
+    #     ('Vibra Medio por 4 Seg', 'Vibra Medio por 4 Seg', 1, 1, 4, 2),
+    #     ('Vibra Medio por 5 Seg', 'Vibra Medio por 5 Seg', 1, 1, 5, 2),
+    #     ('Vibra Forte por 2 Seg', 'Vibra Forte por 2 Seg', 2, 1, 2, 2),
+    #     ('Vibra Forte por 3 Seg', 'Vibra Forte por 3 Seg', 2, 1, 3, 2),
+    #     ('Vibra Forte por 5 Seg', 'Vibra Forte por 5 Seg', 2, 1, 5, 2)
+    # ]
+    #
+    # for title, description, level, dare_type, value, action in raw_dare_list:
+    #     dare_list.append(Dare(
+    #         title=title,
+    #         description=description,
+    #         level=level,
+    #         dare_type=dare_type,
+    #         value=value,
+    #         action=action
+    #     ))
+    #
+    # with Dare._meta.database.atomic():
+    #     Dare.bulk_create(dare_list)

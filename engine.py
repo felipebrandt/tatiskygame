@@ -3,9 +3,10 @@ from image_utils import *
 from pygame import image, draw, Color, Rect
 from datetime import datetime
 from random import randint, shuffle
-from models import Webhook, Dare
+from models import Webhook, Dare, WordModel
 import json
 from imap import get_privacy_sell
+from pygame_utils_ts import draw_gradient_rect
 
 
 class Effect:
@@ -153,151 +154,6 @@ class Wheel:
                                         dare_type=self.get_table_type_integer(),
                                         value=int(time_result / 2) + 1,
                                         action=1))
-
-    def table_results_(self, result_list=None):
-
-        if self.table_type == 'coins':
-            tatisky = [Effect('+1 Min Skin Pro', 1), Effect('+1 Min Skin Pro', 1),
-                       Effect('+2 Min Skin Pro', 2), Effect('+2 Min Skin Pro', 2),
-                       Effect('+3 Min Skin Pro', 3), Effect('+4 Min Skin Pro', 4)]
-        elif self.table_type == 'shares':
-            tatisky = [Effect('Carinho', 0), Effect('Troca a Skin', 0), Effect('Fica de Pé', 0),
-                       Effect( 'Dança Gatinha', 0), Effect('Mostra o Look', 0), Effect('Dança na Cadeira', 0)]
-        else:
-            tatisky = [Effect('Manda um Beijo', 0), Effect('Faz um Brinde', 0),
-                       Effect('Desfila', 0), Effect('Faz Pose', 0)]
-
-        light_like_result = ['Mostra o Look', 'Mandar Beijinho', 'Mandar MiniCoração', 'Desenha no Quadro',
-                             'Fazer Careta', 'Imita Um Personagem', 'Desafina na Musica', 'Fazer Pose',
-                             'Finge Tocar Instrumento']
-        medium_like_result = ['Rebola na Cadeira', 'Dança na Cadeira', 'Desfilar na Passarela', 'Mostra a Raba',
-                              'Fantasia de Professora', 'Faz Cara de Safada', 'Pintada na Coxa', 'Ensina Professora',
-                              'Conta Segredo']
-        hard_like_result = ['Ajeita a Flanelinha', 'Carinho Por Cima', 'Carinho Por Dentro', 'Carinho Em Volta',
-                            'Contar um Segredo', 'Dança na Camera', 'Mostra a Pintinha', 'Carinho na Coxa']
-
-        light_gift_result = ['Mostra a Raba', 'Fazer Pose', 'Rebola na Cadeira', 'Faz Cara de Safada',
-                             'Carinho Por Cima', 'Pintada na Coxa']
-        medium_gift_result = ['Rebola na Camera', 'Mostra a Pintinha', 'Ajeita a Flanelinha', 'Dança na Camera',
-                              'Carinho na Coxa']
-        hard_gift_result = ['Carinho Por Dentro', 'Molha o Dedinho', 'Agaixadinha na Camera', 'Carinho Em Volta']
-
-        if self.lush_on:
-            light_like_result += [f'Vibra Fraco por {randint(1, 3)} Seg', f'Vibra Fraco por {randint(1, 3)} Seg']
-            medium_like_result += [f'Vibra Fraco por {randint(2, 4)} Seg', f'Vibra Médio por {randint(1, 3)} Seg']
-            hard_like_result += [f'Vibra Fraco por {randint(3, 5)} Seg', f'Vibra Médio por {randint(2, 4)} Seg']
-
-            light_gift_result += [f'Vibra Médio por {randint(2, 4)} Seg', f'Vibra Forte por {randint(1, 3)} Seg']
-            medium_gift_result += [f'Vibra Fraco por {randint(4, 6)} Seg', f'Vibra Médio por {randint(3, 5)} Seg',
-                                   f'Vibra Forte por {randint(2, 4)} Seg']
-            hard_gift_result += [f'Vibra Fraco por {randint(5, 7)} Seg', f'Vibra Médio por {randint(4, 6)} Seg',
-                                 f'Vibra Forte por {randint(3, 5)} Seg']
-
-        light_like_result = self.remove_last_results(result_list, light_like_result)
-        medium_like_result = self.remove_last_results(result_list, medium_like_result)
-        hard_like_result = self.remove_last_results(result_list, hard_like_result)
-        shuffle(light_gift_result)
-        shuffle(medium_like_result)
-        shuffle(hard_like_result)
-
-        light_gift_result = self.remove_last_results(result_list, light_gift_result)
-        medium_gift_result = self.remove_last_results(result_list, medium_gift_result)
-        hard_gift_result = self.remove_last_results(result_list, hard_gift_result)
-        shuffle(light_like_result)
-        shuffle(medium_gift_result)
-        shuffle(hard_gift_result)
-
-        like_table = {1: [7, 3, 2],
-                      2: [6, 3, 2],
-                      3: [6, 4, 2],
-                      4: [5, 4, 3],
-                      5: [4, 5, 3],
-                      6: [4, 4, 4],
-                      7: [3, 6, 3],
-                      8: [3, 5, 4],
-                      9: [2, 5, 5],
-                      10: [1, 5, 6]}
-
-        gift_table = {1: [5, 4, 0],
-                      2: [4, 4, 0],
-                      3: [3, 3, 1],
-                      4: [2, 3, 2],
-                      5: [1, 3, 3],
-                      6: [1, 2, 3],
-                      7: [0, 3, 3],
-                      8: [0, 2, 3],
-                      9: [0, 1, 3],
-                      10: [0, 0, 3]}
-
-        sub_table = {1: [0, 3, 3],
-                      2: [0, 3, 3],
-                      3: [0, 3, 3],
-                      4: [0, 3, 3],
-                      5: [0, 3, 3],
-                      6: [0, 3, 3],
-                      7: [0, 3, 3],
-                      8: [0, 3, 3],
-                      9: [0, 3, 3],
-                      10: [0, 3, 3]}
-
-        low, midi, high = like_table[self.actual_level]
-        low_level = light_like_result[:low]
-        mid_level = medium_like_result[:midi]
-        high_level = hard_like_result[:high]
-
-        like_results = low_level + mid_level + high_level
-
-        low, midi, high = gift_table[self.actual_level]
-        low_level = light_gift_result[:low]
-        mid_level = medium_gift_result[:midi]
-        high_level = hard_gift_result[:high]
-
-        gift_results = low_level + mid_level + high_level
-
-        # low_level = light_like_result + light_like_result
-        # for i in range(like_table[self.actual_level][0]):
-        #     like_results.append(low_level[i])
-        # mid_level = medium_like_result + medium_like_result
-        # for i in range(like_table[self.actual_level][1]):
-        #     like_results.append(mid_level[i])
-        # high_level = hard_like_result + hard_like_result
-        # for i in range(like_table[self.actual_level][2]):
-        #     like_results.append(high_level[i])
-        #
-        # low_level = light_like_result + light_like_result
-        # for i in range(like_table[self.actual_level][0]):
-        #     like_results.append(low_level[i])
-        # mid_level = medium_like_result + medium_like_result
-        # for i in range(like_table[self.actual_level][1]):
-        #     like_results.append(mid_level[i])
-        # high_level = hard_like_result + hard_like_result
-        # for i in range(like_table[self.actual_level][2]):
-        #     like_results.append(high_level[i])
-        #
-        # type_result = 0
-        # for result in gift_table[self.actual_level]:
-        #     if type_result == 0:
-        #         low_level = light_gift_result + light_gift_result
-        #         for i in range(result):
-        #             gift_results.append(low_level[i])
-        #     if type_result == 1:
-        #         mid_level = medium_gift_result + medium_gift_result
-        #         for i in range(result):
-        #             gift_results.append(mid_level[i])
-        #     if type_result == 2:
-        #         high_level = hard_gift_result + hard_gift_result
-        #         for i in range(result):
-        #             gift_results.append(high_level[i])
-
-        plus_results = 12 - len(gift_results)
-        for time_result in range(plus_results):
-            gift_results.append(f'+ {int(time_result/2) + 1} Min Transparente')
-
-        # plus_results = 12 - len(like_results)
-        # for time_result in range(plus_results):
-        #     like_results.append(f'+ {int(time_result / 2) + 1} Min Transparente')
-
-        self.table = like_results if self.table_type == 'likes' else gift_results
 
     def start_wheel(self, type_wheel):
         self.table_type = type_wheel
@@ -584,13 +440,14 @@ class Word:
     def get_map(self, map_to_reveal):
         for index in map_to_reveal.split(','):
             self.map_to_reveal.append(int(index))
+        shuffle(self.map_to_reveal)
 
 
 class WordGame:
 
     def __init__(self):
         self.word_list = []
-        self.get_word_list()
+        self.get_word_list_by_database()
         self.actual_word = None
         self.font = font.SysFont('Montserrat Heavy', 210, False)
         self.next_time_reveal = datetime.now()
@@ -602,8 +459,18 @@ class WordGame:
                 word, map_reveal = raw_word.split(';')
                 self.word_list.append(Word(word, map_reveal))
 
+    def get_word_list_by_database(self):
+        for word_model in WordModel.get_all_words():
+            self.word_list.append(Word(word_model.word, word_model.map_reveal))
+            word_model.is_valid = False
+            word_model.save()
+        shuffle(self.word_list)
+
     def reveal(self):
         self.actual_word.revealed = self.actual_word.word
+
+    def reveal_letter(self, letter):
+        self.actual_word.reveal_letter(letter)
 
     def update(self, game):
         if self.show_game and self.actual_word and not game.next_spin:
@@ -617,7 +484,10 @@ class WordGame:
                 x = start_x + index * (width_rect + margin)
                 y = start_y + 60
 
-                draw.rect(game.screen, (255, 255, 255), (x, y, width_rect, height_rect))
+                if index not in self.actual_word.map_to_reveal:
+                    draw_gradient_rect(game.screen, (x, y, width_rect, height_rect), (255, 255, 255), (255, 0, 0))
+                else:
+                    draw_gradient_rect(game.screen, (x, y, width_rect, height_rect), (255, 255, 255), (0, 0, 255))
                 draw.rect(game.screen, (0, 0, 0), (x, y, width_rect, height_rect), 3)
 
                 if letter:
@@ -628,7 +498,7 @@ class WordGame:
 
     def get_next_word(self):
         if self.word_list:
-            self.next_time_reveal = datetime.now() + timedelta(seconds=1)
+            self.next_time_reveal = datetime.now() + timedelta(seconds=300)
             self.actual_word = self.word_list.pop()
         else:
             self.actual_word = None
