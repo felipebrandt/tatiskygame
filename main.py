@@ -342,6 +342,7 @@ class TatiskyGame:
                     if self.next_spin.spin and not self.spinning:
                         self.next_spin.table_results(self.get_last_result_list())
                         self.next_spin.spin -= 1
+                        self.lush.vibrate(1, self.lush.get_intense("Fraco"))
                         if self.next_spin.subscriber_name_list:
                             self.subscriber_name_to_draw = self.next_spin.subscriber_name_list.pop()
                             self.sub_song.play()
