@@ -18,6 +18,7 @@ class BaseModel(Model):
 class Config(BaseModel):
     lush_url = CharField()
     lush_api_key = CharField()
+    word_game_time_reveal = IntegerField(default=180)
 
 
 class Webhook(BaseModel):

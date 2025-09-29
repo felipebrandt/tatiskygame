@@ -148,8 +148,8 @@ class Wheel:
             plus_results = 12 - len(self.table)
             for time_result in range(plus_results):
                 self.table.append(Dare(
-                                        title=f'+ {int(time_result / 2) + 1} Min Transparente',
-                                        description=f'+ {int(time_result / 2) + 1} Min Transparente',
+                                        title=f'+ {int(time_result / 2) + 1} Min Skin Pro',
+                                        description=f'+ {int(time_result / 2) + 1} Min Skin Pro',
                                         level=self.actual_level,
                                         dare_type=self.get_table_type_integer(),
                                         value=int(time_result / 2) + 1,
@@ -445,13 +445,14 @@ class Word:
 
 class WordGame:
 
-    def __init__(self):
+    def __init__(self, time_reveal):
         self.word_list = []
         self.get_word_list_by_database()
         self.actual_word = None
         self.font = font.SysFont('Montserrat Heavy', 210, False)
         self.next_time_reveal = datetime.now()
         self.show_game = True
+        self.time_reveal = time_reveal
 
     def get_word_list(self):
         with open('words.txt') as word_file:
@@ -487,7 +488,7 @@ class WordGame:
                 if index not in self.actual_word.map_to_reveal:
                     draw_gradient_rect(game.screen, (x, y, width_rect, height_rect), (255, 255, 255), (255, 0, 0))
                 else:
-                    draw_gradient_rect(game.screen, (x, y, width_rect, height_rect), (255, 255, 255), (0, 0, 255))
+                    draw_gradient_rect(game.screen, (x, y, width_rect, height_rect), (220, 220, 220), (255, 255, 255))
                 draw.rect(game.screen, (0, 0, 0), (x, y, width_rect, height_rect), 3)
 
                 if letter:
@@ -498,7 +499,7 @@ class WordGame:
 
     def get_next_word(self):
         if self.word_list:
-            self.next_time_reveal = datetime.now() + timedelta(seconds=300)
+            self.next_time_reveal = datetime.now() + timedelta(seconds=self.time_reveal)
             self.actual_word = self.word_list.pop()
         else:
             self.actual_word = None
@@ -506,5 +507,5 @@ class WordGame:
     def reveal_next_word(self):
         if datetime.now() >= self.next_time_reveal and self.actual_word.can_reveal():
             self.actual_word.reveal_next()
-            self.next_time_reveal = datetime.now() + timedelta(seconds=1)
+            self.next_time_reveal = datetime.now() + timedelta(seconds=self.time_reveal)
 

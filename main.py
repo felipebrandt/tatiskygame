@@ -3,6 +3,7 @@ import random
 from engine import *
 from pygame import mixer
 from lush import *
+from models import Config
 
 # Configurações iniciais
 WIDTH, HEIGHT = 1980, 1024
@@ -83,6 +84,7 @@ class TatiskyGame:
         self.start_key_5 = False
         self.start_key_6 = False
         self.start_key_7 = False
+        self.start_key_8 = False
         mixer.init()
         self.wheel_sound = pygame.mixer.Sound('assets/click.mp3')
         self.end_time_song = pygame.mixer.Sound('assets/ding.mp3')
@@ -98,6 +100,8 @@ class TatiskyGame:
         self.like_rank = Ranking('liker')
         self.gift_rank = Ranking('gifter')
         self.word_game = None
+        self.config = Config.select().get()
+        self.lush = Lush(self.config)
 
     def get_time_string(self):
         minute = self.transparent_time.seconds // 60
@@ -285,6 +289,9 @@ class TatiskyGame:
                     if event.key == pygame.K_r:
                         self.start_key_7 = True
 
+                    if event.key == pygame.K_u:
+                        self.start_key_8 = True
+
                     if self.start_key_1 and self.start_key_2:
                         self.is_start_cron = not self.is_start_cron
                     if self.start_key_1 and self.start_key_3:
@@ -293,14 +300,22 @@ class TatiskyGame:
                         self.change_lush_status()
                     if self.start_key_1 and self.start_key_5:
                         if self.word_game:
+                            self.word_game.time_reveal = self.config.word_game_time_reveal
                             self.word_game.get_next_word()
                         else:
-                            self.word_game = WordGame()
+                            self.word_game = WordGame(self.config.word_game_time_reveal)
                             self.word_game.get_next_word()
                     if self.start_key_1 and self.start_key_6:
                         self.word_game.show_game = not self.word_game.show_game
                     if self.start_key_1 and self.start_key_7:
                         self.word_game.reveal()
+
+                    if self.start_key_1 and self.start_key_8:
+                        self.config = Config.select().get()
+                        if self.word_game:
+                            self.word_game.time_reveal = self.config.word_game_time_reveal
+                        self.lush.lush_url = self.config.lush_url
+                        self.lush.lush_api_key = self.config.lush_api_key
 
                 elif event.type == pygame.KEYUP:
                     if event.key == pygame.K_SPACE:
@@ -318,6 +333,9 @@ class TatiskyGame:
                         self.start_key_6 = False
                     if event.key == pygame.K_r:
                         self.start_key_7 = False
+
+                    if event.key == pygame.K_u:
+                        self.start_key_8 = False
 
             if datetime.now() - self.result_countdown >= timedelta(milliseconds=5000):
                 if self.next_spin:
@@ -514,7 +532,7 @@ class TatiskyGame:
                 self.plus_chron(timedelta(minutes=dare.value))
         if 'Vibra' in dare.title:
             action, intense, trash, time_sec, time_trash = dare.title.split(' ')
-            vibrate(int(dare.value), get_intense(intense))
+            self.lush.vibrate(int(dare.value), self.lush.get_intense(intense))
 
     def draw_qr_code(self):
         self.screen.blit(self.qrcode, (22, 462))
