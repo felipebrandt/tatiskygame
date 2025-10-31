@@ -21,6 +21,43 @@ X_POSITION = 0
 Y_POSITION = 1
 
 
+class Image:
+    def __init__(self, path):
+        self.image_show = fixed_resize_height(image.load('assets/halloween/' + path + '.png').convert_alpha(), 40)
+
+
+class ImageList:
+    def __init__(self, path_list):
+        self.image_list = []
+        self.load_all_images(path_list)
+        self.actual_index = 0
+        self.max_index = len(self.image_list) - 1
+
+    def next_image(self):
+        self.actual_index += 1
+        if self.actual_index > self.max_index:
+            self.actual_index = 0
+
+    def get_actual_image(self):
+        img = self.image_list[self.actual_index]
+        self.next_image()
+        return img.image_show
+
+    def load_all_images(self, path_list):
+        for path in path_list:
+            self.image_list.append(Image(path))
+
+
+class HeartImage:
+    def __init__(self):
+        self.images = ImageList(['l1', 'l2', 'l3', 'l4'])
+
+
+class CoinImage:
+    def __init__(self):
+        self.images = ImageList(['p1', 'p2', 'p3', 'p4'])
+
+
 class TatiskyGame:
     def __init__(self):
         pygame.init()
@@ -38,12 +75,17 @@ class TatiskyGame:
         self.angle_step = 360 / SECTORS
         self.roleta_center = (WIDTH // 2, HEIGHT // 2)
         self.radius = 200
-        self.background = image.load('assets/img.png').convert_alpha()
+        self.background = image.load('assets/halloween/img.png').convert_alpha()
         self.qrcode = image.load('assets/qr_code.png').convert_alpha()
         self.result_board = image.load('assets/board_last_result.png').convert_alpha()
         self.cron_board = image.load('assets/cron.png').convert_alpha()
-        self.heart_image = image.load('assets/heart.png').convert_alpha()
-        self.coins_image = image.load('assets/coins_gift.png').convert_alpha()
+
+        # self.heart_image = image.load('assets/heart.png').convert_alpha()
+        # self.coins_image = image.load('assets/coins_gift.png').convert_alpha()
+
+        self.heart_image = HeartImage()
+        self.coins_image = CoinImage()
+
         self.podium_image = resize(image.load('assets/podio.png').convert_alpha(), 1.8)
         self.lush_image = image.load('assets/lush.png').convert_alpha()
         self.like_engine = Like()
@@ -58,7 +100,7 @@ class TatiskyGame:
         self.like_image = resize(image.load('assets/likes.png').convert_alpha(), 0.15)
         self.sub_image = resize(image.load('assets/sub.png').convert_alpha(), 0.15)
         self.center_wheel = None
-        self.border_wheel = image.load('assets/borda.png').convert_alpha()
+        self.border_wheel = image.load('assets/halloween/borda.png').convert_alpha()
         self.table = image.load('assets/tabela.png').convert_alpha()
         self.sup_line = image.load('assets/sup_line.png').convert_alpha()
         self.sup_line_spin = image.load('assets/sup_line_spin.png').convert_alpha()
@@ -169,7 +211,7 @@ class TatiskyGame:
         rotated_wheel = pygame.transform.rotate(self.next_spin.image_wheel, self.current_angle)
         wheel_rect = rotated_wheel.get_rect(center=self.background.get_rect().center)
         self.screen.blit(rotated_wheel, (wheel_rect[0]-88,wheel_rect[1] + 150))
-        self.screen.blit(self.border_wheel, (664, 445))
+        self.screen.blit(self.border_wheel, (655, 402))
         if self.subscriber_name_to_draw:
             self.draw_subscriber_name()
 
@@ -342,7 +384,8 @@ class TatiskyGame:
                     if self.next_spin.spin and not self.spinning:
                         self.next_spin.table_results(self.get_last_result_list())
                         self.next_spin.spin -= 1
-                        self.lush.vibrate(1, self.lush.get_intense("Fraco"))
+                        if self.gift_engine.lush_on:
+                            self.lush.vibrate(1, self.lush.get_intense("Fraco"))
                         if self.next_spin.subscriber_name_list:
                             self.subscriber_name_to_draw = self.next_spin.subscriber_name_list.pop()
                             self.sub_song.play()
@@ -403,13 +446,13 @@ class TatiskyGame:
 
     def get_new_hearts(self):
         while len(self.heart_list) < 50 and self.like_left_to_show:
-            new_heart = Heart(self.heart_image, randint(210, 660), randint(964, 1300))
+            new_heart = Heart(self.heart_image.images.get_actual_image(), randint(210, 660), randint(964, 1300))
             self.heart_list.append(new_heart)
             self.like_left_to_show -= 1
 
     def get_new_coins(self):
         while len(self.coins_list) < 10 and self.coins_left_to_show:
-            new_coin = Coins(self.coins_image, randint(1228, 1666), randint(964, 1500))
+            new_coin = Coins(self.coins_image.images.get_actual_image(), randint(1228, 1666), randint(964, 1500))
             self.coins_list.append(new_coin)
             self.coins_left_to_show -= 1
 
