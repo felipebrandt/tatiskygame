@@ -211,7 +211,7 @@ class TatiskyGame:
         rotated_wheel = pygame.transform.rotate(self.next_spin.image_wheel, self.current_angle)
         wheel_rect = rotated_wheel.get_rect(center=self.background.get_rect().center)
         self.screen.blit(rotated_wheel, (wheel_rect[0]-88,wheel_rect[1] + 150))
-        self.screen.blit(self.border_wheel, (655, 402))
+        self.screen.blit(self.border_wheel, (657, 402))
         if self.subscriber_name_to_draw:
             self.draw_subscriber_name()
 
