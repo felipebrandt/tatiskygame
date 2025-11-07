@@ -20,3 +20,14 @@ def fixed_resize_height(image, to_size_y):
     size_x, size_y = image.get_size()
     return resize(image, to_size_y/size_y)
 
+
+def fixed_resize_high_size(image, to_size):
+    size_x, size_y = image.get_size()
+    high_size = max(size_x, size_y)
+    return resize(image, to_size/high_size)
+
+
+def fixed_resize_lower_size(image, to_size):
+    size_x, size_y = image.get_size()
+    lower_size = min(size_x, size_y)
+    return resize(image, to_size/lower_size)
