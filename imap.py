@@ -30,7 +30,7 @@ def get_privacy_sell():
         print(f"De: {from_}")
         print(f"Assunto: {subject}")
 
-        if "Parabéns! Você fez uma venda" in subject:
+        if "Parabéns! Você" in subject and 'Contato Privacy' in from_:
             sells += 1
             print('➡ Executando ação...')
 

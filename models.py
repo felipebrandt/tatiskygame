@@ -88,6 +88,33 @@ class WordModel(BaseModel):
         return []
 
 
+class LiveDay(BaseModel):
+    live_day_id = AutoField(primary_key=True, help_text='Id do Seguidor')
+
+
+class TikTokUser(BaseModel):
+    tik_tok_id = AutoField(primary_key=True, help_text='Id do Seguidor')
+    user_name = CharField()
+
+    @staticmethod
+    def get_user(tiktok_user):
+        has_user = TikTokUser.select().where(TikTokUser.user_name == tiktok_user['user_id'])
+        if has_user:
+            return has_user.get()
+
+        new_user = TikTokUser()
+        new_user.user_name = tiktok_user['user_id']
+
+        return new_user
+
+
+class TikTokScore(BaseModel):
+    live_day_id = ForeignKeyField(LiveDay, to_field='live_day_id', null=True)
+    tik_tok_id = ForeignKeyField(TikTokUser, to_field='tik_tok_id', null=True)
+    like_score = IntegerField()
+    coin_score = IntegerField()
+
+
 if __name__ == '__main__':
     db.create_tables([WordModel])
 
