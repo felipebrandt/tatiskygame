@@ -211,6 +211,7 @@ class TatiskyGame:
         button_theme_c = Button(self.hud_button_images, 'Natal')
         button_theme_d = Button(self.hud_button_images, 'Ano Novo')
         button_theme_e = Button(self.hud_button_images, 'Férias')
+        button_theme_f = Button(self.hud_button_images, 'Carnaval')
         button_start = Button(self.hud_button_images, 'Iniciar')
         while not self.start_game:
             self.blit(self.hud_window, (0, 0))
@@ -227,6 +228,7 @@ class TatiskyGame:
                 button_theme_c.update(self, 770, 600)
                 button_theme_d.update(self, 1050, 600)
                 button_theme_e.update(self, 770, 730)
+                button_theme_f.update(self, 1050, 730)
 
             if self.theme_chose:
                 button_start.update(self, (WIDTH // 2) - (button_start.frame_button.get_width() // 2), 470)
@@ -255,6 +257,11 @@ class TatiskyGame:
                 self.theme_chose = True
                 theme = 'ferias'
                 self.border_wheel_position = (646, 409)
+
+            if button_theme_f.end_animation:
+                self.theme_chose = True
+                theme = 'carnaval'
+                self.border_wheel_position = (638, 413)
 
             if button_start.end_animation:
                 self.start_game = True
