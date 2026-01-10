@@ -74,6 +74,8 @@ class TatiskyGame:
         self.start_key_6 = False
         self.start_key_7 = False
         self.start_key_8 = False
+        self.start_key_9 = False
+        self.start_key_10 = False
         self.theme_chose = False
         mixer.init()
         self.hud_button_images = {'frame_button': resize(image.load('assets/frame_button.png'), 0.6),
@@ -349,6 +351,12 @@ class TatiskyGame:
                     if event.key == pygame.K_u:
                         self.start_key_8 = True
 
+                    if event.key == pygame.K_0:
+                        self.start_key_9 = True
+
+                    if event.key == pygame.K_p:
+                        self.start_key_10 = True
+
                     if self.start_key_1 and self.start_key_2:
                         self.is_start_cron = not self.is_start_cron
                     if self.start_key_1 and self.start_key_3:
@@ -366,6 +374,12 @@ class TatiskyGame:
                         self.word_game.show_game = not self.word_game.show_game
                     if self.start_key_1 and self.start_key_7:
                         self.word_game.reveal()
+
+                    if self.start_key_1 and self.start_key_9:
+                        self.transparent_time = timedelta(0)
+
+                    if self.start_key_1 and self.start_key_10:
+                        self.plus_chron(timedelta(minutes=1))
 
                     if self.start_key_1 and self.start_key_8:
                         self.config = Config.select().get()
@@ -393,6 +407,12 @@ class TatiskyGame:
 
                     if event.key == pygame.K_u:
                         self.start_key_8 = False
+
+                    if event.key == pygame.K_0:
+                        self.start_key_9 = False
+
+                    if event.key == pygame.K_p:
+                        self.start_key_10 = False
 
             if datetime.now() - self.result_countdown >= timedelta(milliseconds=5000):
                 if self.next_spin:
