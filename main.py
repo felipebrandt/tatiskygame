@@ -3,10 +3,167 @@ import random
 from engine import *
 from pygame import mixer
 from lush import *
-from models import Config
+from models import Config, ActionKey
 from load_file import Assets
 from hud_utils import Button
 
+
+class ActionKeyMenu:
+    def __init__(self, screen, action_keys, hot_key):
+        self.screen = screen
+        self.action_keys = action_keys
+        self.hot_key = hot_key
+
+        self.hot_key_image = resize(image.load('assets/long_button.png').convert_alpha(), 0.4)
+        self.trigger_key_image = resize(image.load('assets/short_button.png').convert_alpha(), 0.4)
+
+        self.width = 800
+        self.height = 400
+        self.x = (screen.get_width() - self.width) // 2
+        self.hidden_y = -self.height
+        self.visible_y = 50
+        self.y = self.hidden_y
+
+        self.content_surface = pygame.Surface((self.width - 40, self.height - 80))
+        self.content_surface.set_colorkey((0, 0, 0))
+
+        self.speed = 20
+        self.is_open = False
+
+        self.font_title = pygame.font.SysFont("arial", 26, bold=True)
+        self.font = pygame.font.SysFont("arial", 18)
+        self.key_font = pygame.font.SysFont("arial", 14, bold=True)
+        self.desc_font = pygame.font.SysFont("arial", 18)
+
+        self.bg_color = (25, 25, 25)
+        self.border_color = (180, 180, 180)
+        self.text_color = (255, 175, 195)
+
+        self.scroll_offset = 0
+        self.max_scroll = 0
+
+    def toggle(self):
+        self.is_open = not self.is_open
+
+    def update(self):
+        target_y = self.visible_y if self.is_open else self.hidden_y
+
+        if self.y < target_y:
+            self.y = min(self.y + self.speed, target_y)
+        elif self.y > target_y:
+            self.y = max(self.y - self.speed, target_y)
+
+    def handle_event(self, event):
+        if not self.is_open:
+            return
+
+        if event.type == pygame.MOUSEWHEEL:
+            self.scroll_offset += event.y * 30  # ajuste velocidade
+            self.scroll_offset = max(
+                min(self.scroll_offset, 0),
+                -self.max_scroll
+            )
+
+    def draw(self):
+        if self.y <= self.hidden_y:
+            return
+
+        # Painel externo
+        panel_rect = pygame.Rect(self.x, self.y, self.width, self.height)
+        pygame.draw.rect(self.screen, self.bg_color, panel_rect, border_radius=8)
+        pygame.draw.rect(self.screen, self.border_color, panel_rect, 2, border_radius=8)
+
+        # Título
+        title = self.font_title.render("ATALHOS DISPONÍVEIS", True, self.text_color)
+        self.screen.blit(title, (self.x + 20, self.y + 15))
+
+        # 🔹 Limpa a surface interna
+        self.content_surface.fill(self.bg_color)
+
+        y_offset = self.scroll_offset
+        content_height = 0
+
+        hotkey_name = self.hot_key.name
+
+        hotkey_surface = self.render_key(
+            self.hot_key_image,
+            hotkey_name,
+            self.key_font,
+            (255, 255, 255)
+        )
+
+        for trigger_key, action in self.action_keys.items():
+            trigger_name = trigger_key
+
+            trigger_surface = self.render_key(
+                self.trigger_key_image,
+                trigger_name,
+                self.key_font,
+                (255, 255, 255)
+            )
+
+            desc_text = f"{action.description}"
+            desc_surface = self.desc_font.render(desc_text, True, self.text_color)
+
+            # 🔹 altura da linha (mantendo sua lógica)
+            item_height = max(
+                hotkey_surface.get_height(),
+                trigger_surface.get_height()
+            ) + 12
+
+            # 🔹 centro vertical da linha
+            center_y = y_offset + item_height // 2
+
+            # HOT KEY (centralizado)
+            self.content_surface.blit(
+                hotkey_surface,
+                (0, center_y - hotkey_surface.get_height() // 2)
+            )
+
+            # "+"
+            plus_text = self.desc_font.render("+", True, (255, 145, 165))
+            self.content_surface.blit(
+                plus_text,
+                (
+                    hotkey_surface.get_width() + 6,
+                    center_y - plus_text.get_height() // 2
+                )
+            )
+
+            # TRIGGER KEY (centralizado)
+            x_trigger = hotkey_surface.get_width() + 20
+            self.content_surface.blit(
+                trigger_surface,
+                (x_trigger, center_y - trigger_surface.get_height() // 2)
+            )
+
+            # DESCRIÇÃO (centralizada)
+            desc_x = x_trigger + trigger_surface.get_width() + 20
+            self.content_surface.blit(
+                desc_surface,
+                (desc_x, center_y - desc_surface.get_height() // 2)
+            )
+
+            y_offset += item_height
+            content_height += item_height
+
+        viewport_height = self.content_surface.get_height()
+        self.max_scroll = max(0, content_height - viewport_height)
+
+        self.screen.blit(
+            self.content_surface,
+            (self.x + 20, self.y + 60)
+        )
+
+    @staticmethod
+    def render_key(surface, key_name, font, text_color=(20, 20, 20)):
+        key_surface = surface.copy()
+
+        text = font.render(key_name.upper(), True, text_color)
+        text_rect = text.get_rect(center=key_surface.get_rect().center)
+
+        key_surface.blit(text, text_rect)
+        return key_surface
 
 # Configurações iniciais
 WIDTH, HEIGHT = 1980, 1024
@@ -66,16 +223,17 @@ class TatiskyGame:
         self.transparent_time_string = ''
         self.get_time_string()
         self.is_start_cron = False
-        self.start_key_1 = False
-        self.start_key_2 = False
-        self.start_key_3 = False
-        self.start_key_4 = False
-        self.start_key_5 = False
-        self.start_key_6 = False
-        self.start_key_7 = False
-        self.start_key_8 = False
-        self.start_key_9 = False
-        self.start_key_10 = False
+
+        self.hot_key = None
+        self.menu_key = None
+        self.action_keys = {}
+        self.action_menu = ActionKeyMenu(
+            screen=self.screen,
+            action_keys=self.action_keys,
+            hot_key=self.hot_key
+        )
+
+        self.update_action_keys()
         self.theme_chose = False
         mixer.init()
         self.hud_button_images = {'frame_button': resize(image.load('assets/frame_button.png'), 0.6),
@@ -320,6 +478,10 @@ class TatiskyGame:
             self.get_next_spin()
             self.update()
             self.draw_podium()
+
+            self.action_menu.update()
+            self.action_menu.draw()
+
             if self.word_game:
                 if self.word_game.actual_word:
                     self.word_game.update(self)
@@ -329,90 +491,34 @@ class TatiskyGame:
             if self.to_finish_angle:
                 self.smooth_stop()
             for event in pygame.event.get():
+                self.action_menu.handle_event(event)
+
                 if event.type == pygame.QUIT:
                     self.running = False
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE:
-                        self.start_key_1 = True
-                    if event.key == pygame.K_t:
-                        self.start_key_2 = True
-                    if event.key == pygame.K_1:
-                        self.start_key_3 = True
-                    if event.key == pygame.K_l:
-                        self.start_key_4 = True
-                    if event.key == pygame.K_j:
-                        self.start_key_5 = True
-                    if event.key == pygame.K_s:
-                        self.start_key_6 = True
+                    if pygame.key.name(event.key) == self.hot_key.trigger_key:
+                        self.hot_key.is_active = True
+                    if pygame.key.name(event.key) == self.menu_key.trigger_key:
+                        self.menu_key.is_active = True
+                    if self.action_keys.get(pygame.key.name(event.key)):
+                        self.action_keys[pygame.key.name(event.key)].is_active = True
 
-                    if event.key == pygame.K_r:
-                        self.start_key_7 = True
+                    if self.menu_key.is_active:
+                        self.menu_key.execute_action(self)
 
-                    if event.key == pygame.K_u:
-                        self.start_key_8 = True
-
-                    if event.key == pygame.K_0:
-                        self.start_key_9 = True
-
-                    if event.key == pygame.K_p:
-                        self.start_key_10 = True
-
-                    if self.start_key_1 and self.start_key_2:
-                        self.is_start_cron = not self.is_start_cron
-                    if self.start_key_1 and self.start_key_3:
-                        self.like_engine.spin += 1
-                    if self.start_key_1 and self.start_key_4:
-                        self.change_lush_status()
-                    if self.start_key_1 and self.start_key_5:
-                        if self.word_game:
-                            self.word_game.time_reveal = self.config.word_game_time_reveal
-                            self.word_game.get_next_word()
-                        else:
-                            self.word_game = WordGame(self.config.word_game_time_reveal)
-                            self.word_game.get_next_word()
-                    if self.start_key_1 and self.start_key_6:
-                        self.word_game.show_game = not self.word_game.show_game
-                    if self.start_key_1 and self.start_key_7:
-                        self.word_game.reveal()
-
-                    if self.start_key_1 and self.start_key_9:
-                        self.transparent_time = timedelta(0)
-
-                    if self.start_key_1 and self.start_key_10:
-                        self.plus_chron(timedelta(minutes=1))
-
-                    if self.start_key_1 and self.start_key_8:
-                        self.config = Config.select().get()
-                        if self.word_game:
-                            self.word_game.time_reveal = self.config.word_game_time_reveal
-                        self.lush.lush_url = self.config.lush_url
-                        self.lush.lush_api_key = self.config.lush_api_key
+                    if self.hot_key.is_active:
+                        for action_key in self.action_keys.values():
+                            if action_key.is_active:
+                                action_key.execute_action(self)
+                                break
 
                 elif event.type == pygame.KEYUP:
-                    if event.key == pygame.K_SPACE:
-                        self.start_key_1 = False
-                    if event.key == pygame.K_t:
-                        self.start_key_2 = False
-                    if event.key == pygame.K_1:
-                        self.start_key_3 = False
-                    if event.key == pygame.K_l:
-                        self.start_key_4 = False
-
-                    if event.key == pygame.K_j:
-                        self.start_key_5 = False
-                    if event.key == pygame.K_s:
-                        self.start_key_6 = False
-                    if event.key == pygame.K_r:
-                        self.start_key_7 = False
-
-                    if event.key == pygame.K_u:
-                        self.start_key_8 = False
-
-                    if event.key == pygame.K_0:
-                        self.start_key_9 = False
-
-                    if event.key == pygame.K_p:
-                        self.start_key_10 = False
+                    if pygame.key.name(event.key) == self.hot_key.trigger_key:
+                        self.hot_key.is_active = False
+                    if pygame.key.name(event.key) == self.menu_key.trigger_key:
+                        self.menu_key.is_active = False
+                    if self.action_keys.get(pygame.key.name(event.key)):
+                        self.action_keys[pygame.key.name(event.key)].is_active = False
 
             if datetime.now() - self.result_countdown >= timedelta(milliseconds=5000):
                 if self.next_spin:
@@ -615,6 +721,20 @@ class TatiskyGame:
 
     def draw_qr_code(self):
         self.screen.blit(self.assets.qrcode, (22, 462))
+
+    def clear_spins(self):
+        self.gift_engine.spin = 0
+        self.like_engine.spin = 0
+
+    def update_action_keys(self):
+        action_keys = {}
+        for action_key in ActionKey.select().where(ActionKey.is_valid == True and ActionKey.is_hot_key == False):
+            action_keys[action_key.trigger_key] = action_key
+        self.hot_key = ActionKey.select().where(ActionKey.name == 'crtl').get()
+        self.menu_key = ActionKey.select().where(ActionKey.name == 'Menu').get()
+        self.action_keys = action_keys
+        self.action_menu.action_keys = action_keys
+        self.action_menu.hot_key = self.hot_key
 
 
 if __name__ == '__main__':

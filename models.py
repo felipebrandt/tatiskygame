@@ -88,6 +88,23 @@ class WordModel(BaseModel):
         return []
 
 
+class ActionKey(BaseModel):
+    action_key_id = AutoField(primary_key=True, help_text='Id do ActioKey')
+    trigger_key = CharField(max_length=10)
+    name = CharField(max_length=30)
+    description = CharField(max_length=255)
+    action_code = TextField()
+    is_hot_key = BooleanField(default=False)
+    is_active = BooleanField(default=False)
+    is_valid = BooleanField(default=True)
+
+    def execute_action(self, game):
+        try:
+            exec(self.action_code)
+        except Exception as e:
+            print(f'Erro ao Executar o Código {self.name}')
+
+
 class LiveDay(BaseModel):
     live_day_id = AutoField(primary_key=True, help_text='Id do Seguidor')
 
@@ -116,7 +133,7 @@ class TikTokScore(BaseModel):
 
 
 if __name__ == '__main__':
-    db.create_tables([WordModel])
+    db.create_tables([ActionKey])
 
     # dare_list = []
     #
